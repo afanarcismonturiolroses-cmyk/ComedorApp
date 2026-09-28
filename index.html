@@ -1046,14 +1046,24 @@ if(canAccess('tesoreria')){
       const f=$('#fileResumen').files[0];
       if(!f){ st.textContent='Elige primero el archivo (el JSON o el HTML de Cuentas Transparentes).'; return; }
       const raw = await f.text();
-      let data = null;
-      try{ data = JSON.parse(raw); }
+      let data = null, viaJSON=false, viaHTML=false, jsonErr='', htmlEncontrado=false, htmlErr='';
+      try{ data = JSON.parse(raw); viaJSON=true; }
       catch(e){
+        jsonErr = e.message;
         const m = raw.match(/const D\s*=\s*(\{[\s\S]*?\});/);
-        if(m){ try{ data = JSON.parse(m[1]); }catch(e2){ data = null; } }
+        if(m){
+          htmlEncontrado = true;
+          try{ data = JSON.parse(m[1]); viaHTML=true; }catch(e2){ data = null; htmlErr = e2.message; }
+        }
       }
       if(!data || !Array.isArray(data.cursos) || typeof data.datos!=='object'){
-        st.textContent='No se han reconocido las cuentas en este archivo. Sube el JSON de resumen o el HTML de Cuentas Transparentes.'; return;
+        const diag = `Archivo: "${f.name}" (${f.size} bytes). ` +
+          (viaJSON ? 'Se leyó como JSON pero le faltan los campos "cursos"/"datos".' :
+           htmlEncontrado ? ('Se encontró "const D=" dentro del HTML pero no se pudo interpretar: '+htmlErr) :
+           ('No es un JSON válido ('+jsonErr+') ni contiene "const D=" de Cuentas Transparentes.')) +
+          ` Empieza por: "${raw.slice(0,60).replace(/\s+/g,' ')}"`;
+        st.textContent = diag;
+        return;
       }
       if(!confirm(`Se sustituirán las cuentas guardadas por las ${data.cursos.length} cursos de este archivo. ¿Continuar?`)) return;
       st.textContent='Guardando…';
