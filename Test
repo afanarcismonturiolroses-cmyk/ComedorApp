@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnóstico ComedorApp</title>
+<style>
+body{font-family:-apple-system,Roboto,sans-serif;padding:1rem;font-size:16px;line-height:1.4}
+h3{margin:0 0 .6rem}
+li{margin:.5rem 0;word-break:break-word}
+.ok{color:#1a7f37}
+.ko{color:#b3261e;font-weight:700}
+.info{color:#444}
+</style>
+</head>
+<body>
+<h3>Diagnóstico ComedorApp</h3>
+<ul id="log"></ul>
+
+<script>
+var logEl = document.getElementById('log');
+function say(t, c){
+  var li = document.createElement('li');
+  li.className = c || 'info';
+  li.textContent = t;
+  logEl.appendChild(li);
+}
+window.say = say;
+say('1 ✓ JavaScript normal funciona', 'ok');
+window.addEventListener('error', function(e){ say('✗ Error JS: ' + e.message, 'ko'); });
+window.addEventListener('unhandledrejection', function(e){
+  say('✗ Promesa rechazada: ' + ((e.reason && e.reason.message) || e.reason), 'ko');
+});
+</script>
+
+<script type="module">
+say('2 ✓ Los módulos JS se ejecutan', 'ok');
+
+const cfg = {
+  apiKey: "AIzaSyBFun83wXZP5WF1sTBnoJwX9bEdtueWMbY",
+  authDomain: "comedorafa.firebaseapp.com",
+  databaseURL: "https://comedorafa-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "comedorafa",
+  storageBucket: "comedorafa.firebasestorage.app",
+  messagingSenderId: "1068343664940",
+  appId: "1:1068343664940:web:b91e68d5bb5fdf16320c89"
+};
+
+try {
+  const a = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js");
+  say('3 ✓ firebase-app.js descargado', 'ok');
+  const au = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
+  say('4 ✓ firebase-auth.js descargado', 'ok');
+  const app = a.initializeApp(cfg, 'diagnostico');
+  const auth = au.getAuth(app);
+  say('5 ✓ Firebase inicializado', 'ok');
+  au.onAuthStateChanged(auth, function(u){
+    say('6 ✓ Auth responde (sesión: ' + (u ? u.email : 'ninguna') + ')', 'ok');
+  });
+} catch (e) {
+  say('✗ Fallo en pasos 3-6: ' + (e.code || '') + ' ' + e.message, 'ko');
+}
+
+try {
+  const res = await fetch('index.html?t=' + Date.now(), { cache: 'no-store' });
+  const html = await res.text();
+  say('7 index.html descargado: ' + html.length + ' caracteres', 'ok');
+  say('   Contiene "Entrando…": ' + (html.includes('Entrando…') ? 'sí' : 'NO'), html.includes('Entrando…') ? 'ok' : 'ko');
+  say('   Contiene "btnLogin": ' + (html.includes('btnLogin') ? 'sí' : 'NO'), html.includes('btnLogin') ? 'ok' : 'ko');
+
+  const re = /<script type="module">([\s\S]*?)<\/script>/g;
+  const blocks = [];
+  let m;
+  while ((m = re.exec(html))) blocks.push(m[1]);
+  say('   Bloques módulo encontrados: ' + blocks.length);
+
+  for (let i = 0; i < blocks.length; i++) {
+    const url = URL.createObjectURL(new Blob([blocks[i]], { type: 'text/javascript' }));
+    try {
+      await import(url);
+      say('8.' + (i + 1) + ' ✓ Bloque ' + (i + 1) + ' sin errores de sintaxis', 'ok');
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        say('8.' + (i + 1) + ' ✗ ERROR DE SINTAXIS en bloque ' + (i + 1) + ' (' + blocks[i].split('\n').length + ' líneas): ' + e.message, 'ko');
+      } else {
+        say('8.' + (i + 1) + ' ✓ Bloque ' + (i + 1) + ' sin errores de sintaxis (aviso norm
