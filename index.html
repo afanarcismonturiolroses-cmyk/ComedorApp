@@ -169,6 +169,8 @@
       <h2>Sin permisos asignados</h2>
       <p class="small">Tu cuenta no tiene ningún rol asignado. Pide a Administración de la AFA que te lo active.</p>
       <p class="small" id="noRoleInfo" style="word-break:break-all;"></p>
+      <button id="btnClaimAdmin" class="hidden">Activar mi cuenta como administrador</button>
+      <p class="small" id="claimStatus"></p>
     </div>
   </section>
 
@@ -415,7 +417,30 @@ async function loadRoleAndStart(user){
     const el=document.getElementById('noRoleInfo');
     if(el) el.textContent='Datos técnicos · UID: '+user.uid+' · error al leer el rol: '+(e.code||'')+' '+(e.message||e);
   }
+  offerClaimAdmin(user);
   startApp();
+}
+
+// Arranque inicial: la cuenta de la AFA puede darse a sí misma el rol de administración.
+// La protección real son las reglas de la base de datos: con las reglas por rol activas,
+// solo un administrador puede escribir en roles/, así que este botón deja de funcionar para cualquier otro.
+function offerClaimAdmin(user){
+  if(['admin','monitora','profesor'].includes(window.__ROL)) return;
+  if((user.email||'').toLowerCase()!=='afanarcismonturiolroses@gmail.com') return;
+  const b=document.getElementById('btnClaimAdmin'); if(!b) return;
+  b.classList.remove('hidden');
+  b.onclick=async()=>{
+    const st=document.getElementById('claimStatus');
+    b.disabled=true; st.textContent='Guardando…';
+    try{
+      await set(ref(db,'roles/'+user.uid),'admin');
+      st.textContent='Listo ✓ Recargando…';
+      setTimeout(()=>location.reload(),800);
+    }catch(e){
+      b.disabled=false;
+      st.textContent='Error: '+(e.code||'')+' '+(e.message||e);
+    }
+  };
 }
 
 function startApp(){
