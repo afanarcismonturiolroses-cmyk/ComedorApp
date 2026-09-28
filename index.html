@@ -386,8 +386,41 @@ canvas{max-width:100%;}
   <!-- ============ VISTA TESORERÍA ============ -->
   <section id="view-tesoreria" class="hidden">
     <div class="card" id="sec-tes-inicio">
-      <h2>Tesorería</h2>
-      <p class="small">Esta sección está en construcción. Aquí se gestionarán ingresos, gastos, presupuesto e informes de la AFA.</p>
+      <h2>Resumen</h2>
+      <div class="grid-stats" id="tesStats"></div>
+    </div>
+
+    <div class="card" id="sec-tes-import">
+      <h2>Importar extracto (CSV)</h2>
+      <p class="small">Sube el CSV del banco. Antes de guardar nada podrás revisar las filas detectadas.</p>
+      <input type="file" id="fileExtracto" accept=".csv,text/csv">
+      <div id="importPreview"></div>
+    </div>
+
+    <div class="card" id="sec-tes-manual">
+      <h2>Añadir movimiento a mano</h2>
+      <div class="row">
+        <div class="flexcol" style="flex:1;"><label class="small">Fecha</label><input type="date" id="tesFecha"></div>
+        <div class="flexcol" style="flex:2;"><label class="small">Concepto</label><input type="text" id="tesConcepto" placeholder="Ej. Factura material escolar"></div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="flexcol" style="flex:1;"><label class="small">Tipo</label>
+          <select id="tesTipo"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select>
+        </div>
+        <div class="flexcol" style="flex:1;"><label class="small">Importe (€)</label><input type="number" id="tesImporte" step="0.01" min="0"></div>
+      </div>
+      <button id="btnTesAdd" style="margin-top:.6rem;">Añadir movimiento</button>
+      <span id="tesAddStatus" class="small"></span>
+    </div>
+
+    <div class="card" id="sec-tes-movs">
+      <div class="row" style="justify-content:space-between;">
+        <h2>Movimientos</h2>
+        <select id="tesFiltroMes" style="max-width:160px;"></select>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="tesTable"><thead><tr><th>Fecha</th><th>Concepto</th><th>Origen</th><th style="text-align:right;">Importe</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
     </div>
   </section>
 
@@ -854,6 +887,160 @@ if(rol==='monitora'){
     const newRef = push(ref(db, `students/${clase}`));
     await set(newRef, { nombre, clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
     await update(ref(db, `attendance/${date}/${clase}/${newRef.key}`), { marcaProfesor:true, confirmadoMonitora:true, horaMarcaProfesor:new Date().toISOString() });
+  });
+}
+
+/* =========================================================================
+   VISTA TESORERÍA
+   ========================================================================= */
+let tesMovimientos = {};
+
+function tesCategoriaAuto(concepto){
+  return ''; // sin categorizar por ahora; se añadirá más adelante
+}
+
+function detectColTes(headerRow, keywords){
+  return headerRow.findIndex(h => keywords.some(k => String(h||'').toLowerCase().includes(k)));
+}
+
+function parseImporteEs(raw){
+  let s = String(raw==null?'':raw).trim();
+  if(!s) return NaN;
+  s = s.replace(/[€\s]/g,'');
+  const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
+  s = s.replace(/^[-()]+|[)]+$/g,'');
+  if(s.includes(',') && s.includes('.')){
+    s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g,'').replace(',','.') : s.replace(/,/g,'');
+  } else if(s.includes(',')){
+    s = s.replace(',','.');
+  }
+  const n = parseFloat(s);
+  if(isNaN(n)) return NaN;
+  return neg ? -Math.abs(n) : n;
+}
+
+function parseFechaEs(raw){
+  const s = String(raw||'').trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+  if(m){
+    let [_,d,mo,y]=m; if(y.length===2) y='20'+y;
+    return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  return '';
+}
+
+function parseCSVtext(text){
+  const sep = (text.split('\n')[0].split(';').length > text.split('\n')[0].split(',').length) ? ';' : ',';
+  return text.split(/\r?\n/).filter(l=>l.trim()!=='').map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
+}
+
+if(rol==='tesoreria' || rol==='admin'){
+  // Ambos roles pueden ver y gestionar tesorería; solo se cargan los listeners si el usuario está en esa vista.
+}
+
+if(rol==='tesoreria'){
+  onValue(ref(db,'tesoreria/movimientos'), snap=>{
+    tesMovimientos = snap.val() || {};
+    renderTesTodo();
+  });
+
+  $('#tesFecha').value = todayStr();
+
+  function renderTesStats(){
+    let ingresos=0, gastos=0;
+    Object.values(tesMovimientos).forEach(m=>{ if(m.importe>=0) ingresos+=m.importe; else gastos+=Math.abs(m.importe); });
+    $('#tesStats').innerHTML = `
+      <div class="stat"><div class="n">${euro(ingresos)}</div><div class="l">Ingresos totales</div></div>
+      <div class="stat"><div class="n">${euro(gastos)}</div><div class="l">Gastos totales</div></div>
+      <div class="stat"><div class="n">${euro(ingresos-gastos)}</div><div class="l">Balance</div></div>`;
+  }
+
+  function renderTesFiltroMes(){
+    const meses = [...new Set(Object.values(tesMovimientos).map(m=>String(m.fecha||'').slice(0,7)).filter(Boolean))].sort().reverse();
+    const cur = $('#tesFiltroMes').value;
+    $('#tesFiltroMes').innerHTML = '<option value="">Todos los meses</option>' + meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+    if(meses.includes(cur)) $('#tesFiltroMes').value = cur;
+  }
+
+  function renderTesTabla(){
+    const filtro = $('#tesFiltroMes').value;
+    const rows = Object.entries(tesMovimientos)
+      .filter(([id,m])=> !filtro || String(m.fecha||'').slice(0,7)===filtro)
+      .sort((a,b)=> (b[1].fecha||'').localeCompare(a[1].fecha||''));
+    const tbody = document.querySelector('#tesTable tbody');
+    tbody.innerHTML = rows.map(([id,m])=>`
+      <tr>
+        <td>${m.fecha||''}</td>
+        <td>${(m.concepto||'').replace(/</g,'&lt;')}</td>
+        <td class="small">${m.origen||'manual'}</td>
+        <td style="text-align:right;color:${m.importe>=0?'var(--emerald)':'var(--rose)'};font-weight:600;">${m.importe>=0?'+':''}${euro(m.importe)}</td>
+        <td><button class="danger tes-del" data-id="${id}" style="padding:.3em .6em;">✕</button></td>
+      </tr>`).join('') || `<tr><td colspan="5" class="small">Sin movimientos todavía.</td></tr>`;
+    $$('#tesTable .tes-del').forEach(btn=>btn.addEventListener('click', async ()=>{
+      if(!confirm('¿Borrar este movimiento?')) return;
+      await remove(ref(db,'tesoreria/movimientos/'+btn.dataset.id));
+    }));
+  }
+
+  function renderTesTodo(){ renderTesStats(); renderTesFiltroMes(); renderTesTabla(); }
+  $('#tesFiltroMes').addEventListener('change', renderTesTabla);
+
+  $('#btnTesAdd').addEventListener('click', async ()=>{
+    const st=$('#tesAddStatus');
+    const fecha=$('#tesFecha').value, concepto=$('#tesConcepto').value.trim();
+    const tipo=$('#tesTipo').value, importeAbs=Number($('#tesImporte').value);
+    if(!fecha || !concepto || !(importeAbs>0)){ st.textContent='Rellena fecha, concepto e importe.'; return; }
+    const importe = tipo==='gasto' ? -Math.abs(importeAbs) : Math.abs(importeAbs);
+    const newRef = push(ref(db,'tesoreria/movimientos'));
+    await set(newRef, { fecha, concepto, importe, categoria: tesCategoriaAuto(concepto), origen:'manual', creado: new Date().toISOString() });
+    st.textContent='Movimiento añadido ✓'; $('#tesConcepto').value=''; $('#tesImporte').value='';
+    setTimeout(()=>st.textContent='',2000);
+  });
+
+  let tesImportRows = [];
+  $('#fileExtracto').addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const box = $('#importPreview');
+    box.innerHTML = '<p class="small">Leyendo archivo…</p>';
+    const text = await file.text();
+    const rows = parseCSVtext(text);
+    if(rows.length < 2){ box.innerHTML = '<p class="small">No se encontraron filas de datos.</p>'; return; }
+    const header = rows[0];
+    const idxFecha = detectColTes(header, ['fecha','data']);
+    const idxConcepto = detectColTes(header, ['concepto','concepte','descrip']);
+    const idxImporte = detectColTes(header, ['importe','import']);
+    if(idxFecha<0 || idxConcepto<0 || idxImporte<0){
+      box.innerHTML = '<p class="small">No se reconocen las columnas de fecha, concepto e importe en este archivo. Cabecera encontrada: '+header.join(' · ')+'</p>';
+      return;
+    }
+    tesImportRows = rows.slice(1).map(r=>({
+      fecha: parseFechaEs(r[idxFecha]),
+      concepto: String(r[idxConcepto]||'').trim(),
+      importe: parseImporteEs(r[idxImporte])
+    })).filter(r=>r.fecha && r.concepto && !isNaN(r.importe));
+    const validas = tesImportRows.length, totales = rows.length-1;
+    box.innerHTML = `
+      <p class="small">${validas} de ${totales} filas reconocidas. Revisa antes de guardar:</p>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;">
+        <table style="font-size:.82rem;"><thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right;">Importe</th></tr></thead>
+        <tbody>${tesImportRows.slice(0,50).map(r=>`<tr><td>${r.fecha}</td><td>${r.concepto.replace(/</g,'&lt;')}</td><td style="text-align:right;">${euro(r.importe)}</td></tr>`).join('')}</tbody></table>
+      </div>
+      ${validas>50?`<p class="small">Mostrando las primeras 50 de ${validas}.</p>`:''}
+      <button id="btnConfirmarImport" style="margin-top:.6rem;">Guardar estos ${validas} movimientos</button>
+      <span id="importStatusTes" class="small"></span>`;
+    $('#btnConfirmarImport').addEventListener('click', async ()=>{
+      const st=$('#importStatusTes');
+      st.textContent='Guardando…';
+      const payload={};
+      tesImportRows.forEach(r=>{
+        const key = push(ref(db,'tesoreria/movimientos')).key;
+        payload['tesoreria/movimientos/'+key] = { ...r, categoria: tesCategoriaAuto(r.concepto), origen:'csv', creado: new Date().toISOString() };
+      });
+      await update(ref(db), payload);
+      st.textContent='Guardado ✓'; $('#fileExtracto').value=''; setTimeout(()=>{ box.innerHTML=''; },1500);
+    });
   });
 }
 
