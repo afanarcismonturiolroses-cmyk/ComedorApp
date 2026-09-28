@@ -252,7 +252,7 @@
     </div>
 
     <div class="navpills">
-      <a href="#sec-enlaces">Enlaces por rol</a>
+      <a href="#sec-enlaces">Usuarios y roles</a>
       <a href="#sec-import">Importar alumnos</a>
       <a href="#sec-precios">Precios</a>
       <a href="#sec-menu">Menú semanal</a>
@@ -263,9 +263,18 @@
     </div>
 
     <div class="card" id="sec-enlaces">
-      <h2>Enlaces por rol</h2>
-      <p class="small">Comparte cada enlace solo con quien corresponda; es la única barrera de acceso.</p>
-      <div id="enlacesList"></div>
+      <h2>Usuarios y roles</h2>
+      <p class="small">Crea la cuenta en Firebase Console → Authentication → Users → Add user. Copia su UID y asígnale aquí el rol.</p>
+      <div class="flexcol">
+        <input id="rolUid" placeholder="UID del usuario">
+        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="admin">Administración</option></select>
+        <div id="rolClaseBox"><select id="rolClase"></select></div>
+        <button id="btnGuardarRol">Guardar rol</button>
+        <span id="rolStatus" class="small"></span>
+      </div>
+      <h3 style="margin-top:1rem;">Roles asignados</h3>
+      <div id="rolesList"></div>
+      <div id="enlacesList" class="hidden"></div>
     </div>
 
     <div class="card" id="sec-import">
@@ -276,7 +285,7 @@
       <textarea id="csvPasteArea" class="hidden" rows="5" placeholder="nombre,clase,alergias,tipoPago,becado,becaImporte" style="margin-top:.5rem;"></textarea>
       <button id="btnImportPaste" class="hidden" style="margin-top:.5rem;">Importar texto pegado</button>
       <p id="importStatus" class="small"></p>
-      <div class="sync-ok" style="margin-top:.7rem;"><strong>Base oficial 2026-2027</strong><br><span class="small">198 alumnos · 9 clases. Esta es la fuente maestra de alumnado.</span><br><button id="btnSyncOfficial" style="margin-top:.5rem;">Sincronizar alumnado oficial</button><span id="syncOfficialStatus" class="small" style="margin-left:.5rem"></span></div>
+      <div class="sync-ok" style="margin-top:.7rem;"><strong>Base oficial 2026-2027</strong><br><span class="small">Elige el archivo ALUMNADO_OFICIAL_2026-2027.json (guardado en tu Drive, no en GitHub) y pulsa sincronizar.</span><br><input type="file" id="fileOfficial" accept=".json,application/json" style="margin-top:.5rem;"><br><button id="btnSyncOfficial" style="margin-top:.5rem;">Sincronizar alumnado oficial</button><span id="syncOfficialStatus" class="small" style="margin-left:.5rem"></span></div>
     </div>
 
     <div class="card" id="sec-menu">
@@ -410,7 +419,7 @@ if(window.emailjs && window.EMAILJS_CONFIG?.publicKey && window.EMAILJS_CONFIG.p
 const CLASSES_DEFAULT = ["4t Primària", "3r Primària", "2n Primària", "1r Primària", "5è Primària", "I3 Infantil", "I4 Infantil", "6è Primària", "I5 Infantil"];
 
 // Padrón oficial 2026-2027 generado desde Matriculados_2026-2027.xlsx.
-const OFFICIAL_STUDENTS = [{"id": "ALU-0001", "nombre": "Rayan", "apellidos": "Acherkouk el Kati", "clase": "4t Primària"}, {"id": "ALU-0002", "nombre": "Biel", "apellidos": "Avellaneda Yllueca", "clase": "4t Primària"}, {"id": "ALU-0003", "nombre": "Sara", "apellidos": "Ben Ali", "clase": "4t Primària"}, {"id": "ALU-0004", "nombre": "Ismael", "apellidos": "Ben Yahya Arabi", "clase": "4t Primària"}, {"id": "ALU-0005", "nombre": "Mourad", "apellidos": "Bounsser", "clase": "4t Primària"}, {"id": "ALU-0006", "nombre": "Elena", "apellidos": "Cindea", "clase": "4t Primària"}, {"id": "ALU-0007", "nombre": "Nayan", "apellidos": "Contreras Brunier", "clase": "4t Primària"}, {"id": "ALU-0008", "nombre": "Carla Georgiana", "apellidos": "Dobre", "clase": "4t Primària"}, {"id": "ALU-0009", "nombre": "Moad", "apellidos": "el Amrani Lacbir", "clase": "4t Primària"}, {"id": "ALU-0010", "nombre": "Zakariya", "apellidos": "el Lahyani Lamdaghri", "clase": "4t Primària"}, {"id": "ALU-0011", "nombre": "Paula", "apellidos": "Expósito Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0012", "nombre": "Matvii", "apellidos": "Fedoronchuk", "clase": "4t Primària"}, {"id": "ALU-0013", "nombre": "Emily Alexandra", "apellidos": "Garcia Zeron", "clase": "4t Primària"}, {"id": "ALU-0014", "nombre": "Aylin", "apellidos": "Gómez Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0015", "nombre": "Shabelys", "apellidos": "Lorenzo Romero", "clase": "4t Primària"}, {"id": "ALU-0016", "nombre": "Lina", "apellidos": "Maimouni", "clase": "4t Primària"}, {"id": "ALU-0017", "nombre": "Kheyra Janell", "apellidos": "Muñoz Gutiérrez", "clase": "4t Primària"}, {"id": "ALU-0018", "nombre": "Ramzi", "apellidos": "Namir", "clase": "4t Primària"}, {"id": "ALU-0019", "nombre": "Nil", "apellidos": "Pàramo Marioli", "clase": "4t Primària"}, {"id": "ALU-0020", "nombre": "Sergi", "apellidos": "Pascual Obrador", "clase": "4t Primària"}, {"id": "ALU-0021", "nombre": "Alessandra", "apellidos": "Pellegrini Maloku", "clase": "4t Primària"}, {"id": "ALU-0022", "nombre": "Shehryar", "apellidos": "Sadique Ijaz", "clase": "4t Primària"}, {"id": "ALU-0023", "nombre": "Álvaro", "apellidos": "Trigueros Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0024", "nombre": "Vega", "apellidos": "Valero Sastre", "clase": "4t Primària"}, {"id": "ALU-0025", "nombre": "Erin", "apellidos": "Werke Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0026", "nombre": "Maury A.", "apellidos": "Wilson Tujano", "clase": "4t Primària"}, {"id": "ALU-0027", "nombre": "Daria Maria", "apellidos": "Zgripcea", "clase": "4t Primària"}, {"id": "ALU-0028", "nombre": "Inas", "apellidos": "Aluat", "clase": "3r Primària"}, {"id": "ALU-0029", "nombre": "Omar", "apellidos": "Baldeh", "clase": "3r Primària"}, {"id": "ALU-0030", "nombre": "Lucía", "apellidos": "Barneo López", "clase": "3r Primària"}, {"id": "ALU-0031", "nombre": "Shady", "apellidos": "Ben Hadj", "clase": "3r Primària"}, {"id": "ALU-0032", "nombre": "Leon", "apellidos": "Caamaño López", "clase": "3r Primària"}, {"id": "ALU-0033", "nombre": "Amir", "apellidos": "Choaibi", "clase": "3r Primària"}, {"id": "ALU-0034", "nombre": "Naila", "apellidos": "Choaibi", "clase": "3r Primària"}, {"id": "ALU-0035", "nombre": "Rida", "apellidos": "el Gori", "clase": "3r Primària"}, {"id": "ALU-0036", "nombre": "Ziyad", "apellidos": "el Idrissi", "clase": "3r Primària"}, {"id": "ALU-0037", "nombre": "Imran", "apellidos": "el Ouassdi", "clase": "3r Primària"}, {"id": "ALU-0038", "nombre": "Savelii", "apellidos": "Fedoronchuk", "clase": "3r Primària"}, {"id": "ALU-0039", "nombre": "Aya", "apellidos": "Hmitti", "clase": "3r Primària"}, {"id": "ALU-0040", "nombre": "Maysa", "apellidos": "Jamai", "clase": "3r Primària"}, {"id": "ALU-0041", "nombre": "Emilia", "apellidos": "Juárez García", "clase": "3r Primària"}, {"id": "ALU-0042", "nombre": "Anas", "apellidos": "Kassequessou Alilou", "clase": "3r Primària"}, {"id": "ALU-0043", "nombre": "Anastasiya", "apellidos": "Leus Buts", "clase": "3r Primària"}, {"id": "ALU-0044", "nombre": "Miguel", "apellidos": "Lima Gonçalves", "clase": "3r Primària"}, {"id": "ALU-0045", "nombre": "Kaïs", "apellidos": "Lopes", "clase": "3r Primària"}, {"id": "ALU-0046", "nombre": "Aitana", "apellidos": "Méndez Pino", "clase": "3r Primària"}, {"id": "ALU-0047", "nombre": "Maroua", "apellidos": "Ouaamar Maach", "clase": "3r Primària"}, {"id": "ALU-0048", "nombre": "Ayman", "apellidos": "Ouaich", "clase": "3r Primària"}, {"id": "ALU-0049", "nombre": "Mariona", "apellidos": "Rengipo Villarroel", "clase": "3r Primària"}, {"id": "ALU-0050", "nombre": "Fatima", "apellidos": "Sadique Ijaz", "clase": "3r Primària"}, {"id": "ALU-0051", "nombre": "Eider", "apellidos": "Szodorai Martín", "clase": "3r Primària"}, {"id": "ALU-0052", "nombre": "Omar", "apellidos": "Tayach", "clase": "3r Primària"}, {"id": "ALU-0053", "nombre": "Leo", "apellidos": "Aymami Balló", "clase": "2n Primària"}, {"id": "ALU-0054", "nombre": "Yousra", "apellidos": "Bakhnik", "clase": "2n Primària"}, {"id": "ALU-0055", "nombre": "Isona", "apellidos": "Borràs Morillas", "clase": "2n Primària"}, {"id": "ALU-0056", "nombre": "Andrei", "apellidos": "Cindea", "clase": "2n Primària"}, {"id": "ALU-0057", "nombre": "Mia", "apellidos": "de Oliveira Manco", "clase": "2n Primària"}, {"id": "ALU-0058", "nombre": "Lina", "apellidos": "Derkaoui Zerhouni", "clase": "2n Primària"}, {"id": "ALU-0059", "nombre": "Eric", "apellidos": "Doré Belmonte", "clase": "2n Primària"}, {"id": "ALU-0060", "nombre": "Mohamed", "apellidos": "Hachmi Mokhtari", "clase": "2n Primària"}, {"id": "ALU-0061", "nombre": "Dina", "apellidos": "El Messari", "clase": "2n Primària"}, {"id": "ALU-0062", "nombre": "Youssef", "apellidos": "El Yemlahi", "clase": "2n Primària"}, {"id": "ALU-0063", "nombre": "Adan", "apellidos": "Fernández Domínguez", "clase": "2n Primària"}, {"id": "ALU-0064", "nombre": "Luna Maria", "apellidos": "Gómez Rivero", "clase": "2n Primària"}, {"id": "ALU-0065", "nombre": "Islam", "apellidos": "Hamdi", "clase": "2n Primària"}, {"id": "ALU-0066", "nombre": "Safwan", "apellidos": "Hida", "clase": "2n Primària"}, {"id": "ALU-0067", "nombre": "Marwa", "apellidos": "Idrissi", "clase": "2n Primària"}, {"id": "ALU-0068", "nombre": "Isabella", "apellidos": "Olave Cifuentes", "clase": "2n Primària"}, {"id": "ALU-0069", "nombre": "Valentina", "apellidos": "Peña Miralles", "clase": "2n Primària"}, {"id": "ALU-0070", "nombre": "Izan", "apellidos": "Tena Marquez", "clase": "2n Primària"}, {"id": "ALU-0071", "nombre": "Denis Andrei", "apellidos": "Zgripcea", "clase": "2n Primària"}, {"id": "ALU-0072", "nombre": "Mosaab", "apellidos": "Zoubai", "clase": "2n Primària"}, {"id": "ALU-0073", "nombre": "Weiqi", "apellidos": "Zhu", "clase": "2n Primària"}, {"id": "ALU-0074", "nombre": "Mayar", "apellidos": "Aalaouel", "clase": "1r Primària"}, {"id": "ALU-0075", "nombre": "Aseel", "apellidos": "Akhdim Samadi", "clase": "1r Primària"}, {"id": "ALU-0076", "nombre": "Malak", "apellidos": "Aluat", "clase": "1r Primària"}, {"id": "ALU-0077", "nombre": "Mikael", "apellidos": "Ben-yahya Arabi", "clase": "1r Primària"}, {"id": "ALU-0078", "nombre": "Nour", "apellidos": "Boubnan", "clase": "1r Primària"}, {"id": "ALU-0079", "nombre": "Biel", "apellidos": "Carrillo Castro", "clase": "1r Primària"}, {"id": "ALU-0080", "nombre": "Ubay", "apellidos": "Dahrouch Samadi", "clase": "1r Primària"}, {"id": "ALU-0081", "nombre": "Aron Costin", "apellidos": "Dobre Dobre", "clase": "1r Primària"}, {"id": "ALU-0082", "nombre": "Ilaf", "apellidos": "el Ouassdi", "clase": "1r Primària"}, {"id": "ALU-0083", "nombre": "Malak", "apellidos": "Hmitti", "clase": "1r Primària"}, {"id": "ALU-0084", "nombre": "Mia", "apellidos": "León Castillo", "clase": "1r Primària"}, {"id": "ALU-0085", "nombre": "Amer", "apellidos": "Mojahid", "clase": "1r Primària"}, {"id": "ALU-0086", "nombre": "Laia", "apellidos": "Muñoz Gil", "clase": "1r Primària"}, {"id": "ALU-0087", "nombre": "Ayeza", "apellidos": "Sadique Ijaz", "clase": "1r Primària"}, {"id": "ALU-0088", "nombre": "Mahit", "apellidos": "Sheikh", "clase": "1r Primària"}, {"id": "ALU-0089", "nombre": "Salah Eddine", "apellidos": "Tahri", "clase": "1r Primària"}, {"id": "ALU-0090", "nombre": "Myriam", "apellidos": "Tayach", "clase": "1r Primària"}, {"id": "ALU-0091", "nombre": "Aris", "apellidos": "Valero Sastre", "clase": "1r Primària"}, {"id": "ALU-0092", "nombre": "Tasnim", "apellidos": "Acherkouk el Kati", "clase": "5è Primària"}, {"id": "ALU-0093", "nombre": "Adam", "apellidos": "Arhoune Ahassan", "clase": "5è Primària"}, {"id": "ALU-0094", "nombre": "Martina", "apellidos": "Barragan Llorell", "clase": "5è Primària"}, {"id": "ALU-0095", "nombre": "Lya", "apellidos": "Barrientos Corcoll", "clase": "5è Primària"}, {"id": "ALU-0096", "nombre": "Nayla", "apellidos": "Bozidi Acherkouk", "clase": "5è Primària"}, {"id": "ALU-0097", "nombre": "Khadija", "apellidos": "Chekkoufi", "clase": "5è Primària"}, {"id": "ALU-0098", "nombre": "Sami", "apellidos": "Daher Maadi", "clase": "5è Primària"}, {"id": "ALU-0099", "nombre": "Maimouna Pepita", "apellidos": "Djiba", "clase": "5è Primària"}, {"id": "ALU-0100", "nombre": "Isabella", "apellidos": "Duran d’Avanzo", "clase": "5è Primària"}, {"id": "ALU-0101", "nombre": "Mohamed Rida", "apellidos": "el Yemlahi", "clase": "5è Primària"}, {"id": "ALU-0102", "nombre": "Mia", "apellidos": "Fornas Fernández", "clase": "5è Primària"}, {"id": "ALU-0103", "nombre": "Angeline de la Caridad", "apellidos": "González Ulloa", "clase": "5è Primària"}, {"id": "ALU-0104", "nombre": "Pau", "apellidos": "Heras Domingo", "clase": "5è Primària"}, {"id": "ALU-0105", "nombre": "Johayna", "apellidos": "Hida", "clase": "5è Primària"}, {"id": "ALU-0106", "nombre": "Zoe", "apellidos": "Ijsselstein Brito", "clase": "5è Primària"}, {"id": "ALU-0107", "nombre": "Stella Jia Jia", "apellidos": "Li", "clase": "5è Primària"}, {"id": "ALU-0108", "nombre": "Mariia", "apellidos": "Malykhina", "clase": "5è Primària"}, {"id": "ALU-0109", "nombre": "Martina", "apellidos": "Meneses Barreto", "clase": "5è Primària"}, {"id": "ALU-0110", "nombre": "Júlio", "apellidos": "Monteiro Rizziolli", "clase": "5è Primària"}, {"id": "ALU-0111", "nombre": "Alessia Camila", "apellidos": "Polanco Torres", "clase": "5è Primària"}, {"id": "ALU-0112", "nombre": "Dídac", "apellidos": "Sastre Martín", "clase": "5è Primària"}, {"id": "ALU-0113", "nombre": "Lev", "apellidos": "Shabalin", "clase": "5è Primària"}, {"id": "ALU-0114", "nombre": "Hajar", "apellidos": "Tahri", "clase": "5è Primària"}, {"id": "ALU-0115", "nombre": "Tanith", "apellidos": "Vaz Noguera", "clase": "5è Primària"}, {"id": "ALU-0116", "nombre": "Naiara", "apellidos": "Viñales Martínez", "clase": "5è Primària"}, {"id": "ALU-0117", "nombre": "Raihana", "apellidos": "Zoubai", "clase": "5è Primària"}, {"id": "ALU-0118", "nombre": "Aaron", "apellidos": "Aalaouel", "clase": "I3 Infantil"}, {"id": "ALU-0119", "nombre": "Amina", "apellidos": "Aharrouchi el Ouarti", "clase": "I3 Infantil"}, {"id": "ALU-0120", "nombre": "Ishaq", "apellidos": "Ahmed", "clase": "I3 Infantil"}, {"id": "ALU-0121", "nombre": "Aleen", "apellidos": "Akhim Samadi", "clase": "I3 Infantil"}, {"id": "ALU-0122", "nombre": "Izia", "apellidos": "Baralo Cazeneuve", "clase": "I3 Infantil"}, {"id": "ALU-0123", "nombre": "Evelyn Maria", "apellidos": "Barbu", "clase": "I3 Infantil"}, {"id": "ALU-0124", "nombre": "Nil", "apellidos": "Barragan Llorell", "clase": "I3 Infantil"}, {"id": "ALU-0125", "nombre": "Othman", "apellidos": "Boubnan", "clase": "I3 Infantil"}, {"id": "ALU-0126", "nombre": "Omar", "apellidos": "el Maachy", "clase": "I3 Infantil"}, {"id": "ALU-0127", "nombre": "Rodayna", "apellidos": "el Messari", "clase": "I3 Infantil"}, {"id": "ALU-0128", "nombre": "Munir", "apellidos": "Imrani Khtira", "clase": "I3 Infantil"}, {"id": "ALU-0129", "nombre": "Adara", "apellidos": "Isidoro Storath", "clase": "I3 Infantil"}, {"id": "ALU-0130", "nombre": "Jonathan", "apellidos": "Olortegui de Morais", "clase": "I3 Infantil"}, {"id": "ALU-0131", "nombre": "Aina", "apellidos": "Pararols Fuentes", "clase": "I3 Infantil"}, {"id": "ALU-0132", "nombre": "Estel", "apellidos": "Portell Tura", "clase": "I3 Infantil"}, {"id": "ALU-0133", "nombre": "Harry", "apellidos": "Rodriguez Reyes", "clase": "I3 Infantil"}, {"id": "ALU-0134", "nombre": "Yanis", "apellidos": "Akhdim Samadi", "clase": "I4 Infantil"}, {"id": "ALU-0135", "nombre": "Kassandra Ioana", "apellidos": "Barbu", "clase": "I4 Infantil"}, {"id": "ALU-0136", "nombre": "Adam", "apellidos": "Chekkoufi", "clase": "I4 Infantil"}, {"id": "ALU-0137", "nombre": "Ivanis", "apellidos": "Creagh Lafos", "clase": "I4 Infantil"}, {"id": "ALU-0138", "nombre": "Adam", "apellidos": "Dahrouch Samadi", "clase": "I4 Infantil"}, {"id": "ALU-0139", "nombre": "Absa", "apellidos": "Djiba", "clase": "I4 Infantil"}, {"id": "ALU-0140", "nombre": "Jinan", "apellidos": "El Kati", "clase": "I4 Infantil"}, {"id": "ALU-0141", "nombre": "Sofia", "apellidos": "El Onsri Laari", "clase": "I4 Infantil"}, {"id": "ALU-0142", "nombre": "Lina", "apellidos": "El Yemlahi", "clase": "I4 Infantil"}, {"id": "ALU-0143", "nombre": "Leia", "apellidos": "Flores Kandeh", "clase": "I4 Infantil"}, {"id": "ALU-0144", "nombre": "Bissan", "apellidos": "Kabadi El Briak", "clase": "I4 Infantil"}, {"id": "ALU-0145", "nombre": "Yanis Khatira", "apellidos": "Boujnah", "clase": "I4 Infantil"}, {"id": "ALU-0146", "nombre": "Ayax", "apellidos": "Martiñan Pozo", "clase": "I4 Infantil"}, {"id": "ALU-0147", "nombre": "Islam", "apellidos": "Ouhrni", "clase": "I4 Infantil"}, {"id": "ALU-0148", "nombre": "Sanad", "apellidos": "Perez El Abasi", "clase": "I4 Infantil"}, {"id": "ALU-0149", "nombre": "Eira", "apellidos": "Prieto Cervera", "clase": "I4 Infantil"}, {"id": "ALU-0150", "nombre": "Dara Ximena", "apellidos": "Quinde Zeron", "clase": "I4 Infantil"}, {"id": "ALU-0151", "nombre": "Joina", "apellidos": "Serrano Riera", "clase": "I4 Infantil"}, {"id": "ALU-0152", "nombre": "Antonio", "apellidos": "Bohanerger Rufián Flores", "clase": "I4 Infantil"}, {"id": "ALU-0153", "nombre": "Aylan", "apellidos": "Zizaoui", "clase": "I4 Infantil"}, {"id": "ALU-0154", "nombre": "Jana", "apellidos": "Aharrouchi", "clase": "6è Primària"}, {"id": "ALU-0155", "nombre": "Leire", "apellidos": "Asensi Pérez", "clase": "6è Primària"}, {"id": "ALU-0156", "nombre": "Manuel", "apellidos": "Confianza Haba", "clase": "6è Primària"}, {"id": "ALU-0157", "nombre": "Mòriah", "apellidos": "Coromina Ricart", "clase": "6è Primària"}, {"id": "ALU-0158", "nombre": "Ahmed", "apellidos": "Daoudi", "clase": "6è Primària"}, {"id": "ALU-0159", "nombre": "Sebastian", "apellidos": "Durac", "clase": "6è Primària"}, {"id": "ALU-0160", "nombre": "Khadija", "apellidos": "el Alami", "clase": "6è Primària"}, {"id": "ALU-0161", "nombre": "Amjad", "apellidos": "el Kanfoudi", "clase": "6è Primària"}, {"id": "ALU-0162", "nombre": "Afnan", "apellidos": "el Kati", "clase": "6è Primària"}, {"id": "ALU-0163", "nombre": "Amira", "apellidos": "el Maachy", "clase": "6è Primària"}, {"id": "ALU-0164", "nombre": "Marwa", "apellidos": "el Masshadi", "clase": "6è Primària"}, {"id": "ALU-0165", "nombre": "Mohamed Amir", "apellidos": "el Ouassdi", "clase": "6è Primària"}, {"id": "ALU-0166", "nombre": "Ismael", "apellidos": "Idrissi", "clase": "6è Primària"}, {"id": "ALU-0167", "nombre": "Agata", "apellidos": "Kozhinova", "clase": "6è Primària"}, {"id": "ALU-0168", "nombre": "Carla", "apellidos": "Moreschi", "clase": "6è Primària"}, {"id": "ALU-0169", "nombre": "Akyra Katterinne", "apellidos": "Muñoz Gutiérrez", "clase": "6è Primària"}, {"id": "ALU-0170", "nombre": "Mohamed Chafik", "apellidos": "Ouaamar Maach", "clase": "6è Primària"}, {"id": "ALU-0171", "nombre": "Duna", "apellidos": "Pararols Fuentes", "clase": "6è Primària"}, {"id": "ALU-0172", "nombre": "Aroa", "apellidos": "Quiñoy Cubero", "clase": "6è Primària"}, {"id": "ALU-0173", "nombre": "Giacomo Michele", "apellidos": "Robles Leopardi", "clase": "6è Primària"}, {"id": "ALU-0174", "nombre": "Hervys Moisés", "apellidos": "Romero González", "clase": "6è Primària"}, {"id": "ALU-0175", "nombre": "Hunor", "apellidos": "Sándor Szodorai Martín", "clase": "6è Primària"}, {"id": "ALU-0176", "nombre": "Sabrina", "apellidos": "Tahiri", "clase": "6è Primària"}, {"id": "ALU-0177", "nombre": "Biel", "apellidos": "Turró Danés", "clase": "6è Primària"}, {"id": "ALU-0178", "nombre": "Helen", "apellidos": "Vaz Godoy", "clase": "6è Primària"}, {"id": "ALU-0179", "nombre": "Juan", "apellidos": "A. Wilson Tunjano", "clase": "6è Primària"}, {"id": "ALU-0180", "nombre": "Weichen", "apellidos": "Zhu", "clase": "6è Primària"}, {"id": "ALU-0181", "nombre": "Aina", "apellidos": "Acherkouk", "clase": "I5 Infantil"}, {"id": "ALU-0182", "nombre": "Umayra", "apellidos": "Ahmed", "clase": "I5 Infantil"}, {"id": "ALU-0183", "nombre": "Ayzal", "apellidos": "Arfat", "clase": "I5 Infantil"}, {"id": "ALU-0184", "nombre": "Ryana", "apellidos": "Ben-Yahya", "clase": "I5 Infantil"}, {"id": "ALU-0185", "nombre": "Alessandra Sophia", "apellidos": "Chacon", "clase": "I5 Infantil"}, {"id": "ALU-0186", "nombre": "Esraa", "apellidos": "Chekkoufi", "clase": "I5 Infantil"}, {"id": "ALU-0187", "nombre": "Celia", "apellidos": "El Farissi", "clase": "I5 Infantil"}, {"id": "ALU-0188", "nombre": "Nouran", "apellidos": "El Idrissi", "clase": "I5 Infantil"}, {"id": "ALU-0189", "nombre": "Mohamed", "apellidos": "Jad Errahmouni", "clase": "I5 Infantil"}, {"id": "ALU-0190", "nombre": "León", "apellidos": "González", "clase": "I5 Infantil"}, {"id": "ALU-0191", "nombre": "Ilyas", "apellidos": "Hamdi", "clase": "I5 Infantil"}, {"id": "ALU-0192", "nombre": "Lía", "apellidos": "Heredia", "clase": "I5 Infantil"}, {"id": "ALU-0193", "nombre": "Rital", "apellidos": "Maarfi", "clase": "I5 Infantil"}, {"id": "ALU-0194", "nombre": "Stela Alexandra", "apellidos": "Machioiu", "clase": "I5 Infantil"}, {"id": "ALU-0195", "nombre": "Ilias", "apellidos": "Ourhni", "clase": "I5 Infantil"}, {"id": "ALU-0196", "nombre": "Giuliana Fernanda", "apellidos": "Pucciarelli", "clase": "I5 Infantil"}, {"id": "ALU-0197", "nombre": "Alexandru Bogdan", "apellidos": "Zgripcea", "clase": "I5 Infantil"}, {"id": "ALU-0198", "nombre": "Gabriel", "apellidos": "Tyminski Jorge", "clase": "I5 Infantil"}];
+let OFFICIAL_STUDENTS = []; // se carga desde un archivo JSON privado (no está en GitHub)
 
 const todayStr = () => new Date().toISOString().slice(0,10);
 const euro = n => (Number(n)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
@@ -475,16 +484,18 @@ onValue(ref(db,'config/precios'), snap=>{
     renderMonthStats();
   }
 });
-onValue(ref(db,'students'), snap=>{
-  students = snap.val() || {};
+const studentsRef = (rol==='profesor') ? (claseParam ? ref(db,'students/'+claseParam) : null) : ((rol==='admin'||rol==='monitora') ? ref(db,'students') : null);
+if(studentsRef) onValue(studentsRef, snap=>{
+  students = (rol==='profesor') ? (snap.exists() ? {[claseParam]: snap.val()} : {}) : (snap.val() || {});
   if(rol==='profesor' && claseParam) renderProfesorList();
   if(rol==='monitora') renderMonitoraList();
   if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
 });
 
 function listenAttendanceForDate(date){
-  onValue(ref(db, 'attendance/'+date), snap=>{
-    attendanceCache[date] = snap.val() || {};
+  const attPath = (rol==='profesor') ? `attendance/${date}/${claseParam}` : 'attendance/'+date;
+  onValue(ref(db, attPath), snap=>{
+    attendanceCache[date] = (rol==='profesor') ? {[claseParam]: snap.val() || {}} : (snap.val() || {});
     if(rol==='profesor' && claseParam) { renderProfesorList(); renderProfesorMenu(); }
     if(rol==='monitora') renderMonitoraList();
     if(rol==='admin'){ renderAdminDayStats(); }
@@ -732,21 +743,35 @@ if(rol==='admin'){
 }
 
 function renderEnlaces(){
-  const base = location.origin + location.pathname;
-  const rows = classesList.map(c=>{
-    const url = `${base}?rol=profesor&clase=${encodeURIComponent(c)}`;
-    return `<div class="copyrow"><span>${c}</span>
-      <button class="secondary" data-url="${url}">Copiar enlace</button></div>`;
+  const sel=$('#rolClase'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=classesList.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(cur) sel.value=cur;
+}
+
+/* ---------------- Usuarios y roles (solo admin) ---------------- */
+if(rol==='admin'){
+  onValue(ref(db,'roles'), snap=>{
+    const data=snap.val()||{};
+    $('#rolesList').innerHTML=Object.entries(data).map(([uid,v])=>{
+      const r=typeof v==='string'?v:((v&&v.rol)||'?');
+      const c=(v&&typeof v==='object'&&v.clase)?' · '+v.clase:'';
+      return `<div class="copyrow"><span class="small"><strong>${r}${c}</strong><br>${uid}</span><button class="danger rol-del" data-uid="${uid}">✕</button></div>`;
+    }).join('') || '<p class="small">Sin roles asignados.</p>';
+    $$('#rolesList .rol-del').forEach(b=>b.addEventListener('click',async()=>{
+      if(b.dataset.uid===auth.currentUser?.uid){ alert('No puedes quitarte tu propio rol de administración.'); return; }
+      if(!confirm('¿Quitar este rol?')) return;
+      await remove(ref(db,'roles/'+b.dataset.uid));
+    }));
   });
-  rows.push(`<div class="copyrow"><span><strong>Monitora</strong></span>
-    <button class="secondary" data-url="${base}?rol=monitora">Copiar enlace</button></div>`);
-  $('#enlacesList').innerHTML = rows.join('');
-  $$('#enlacesList button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      navigator.clipboard.writeText(btn.dataset.url).then(()=>{
-        btn.textContent='Copiado ✓'; setTimeout(()=>btn.textContent='Copiar enlace',1200);
-      });
-    });
+  $('#rolTipo').addEventListener('change',()=>{ $('#rolClaseBox').classList.toggle('hidden',$('#rolTipo').value!=='profesor'); });
+  $('#btnGuardarRol').addEventListener('click',async()=>{
+    const uid=$('#rolUid').value.trim(); const tipo=$('#rolTipo').value;
+    if(!uid){ $('#rolStatus').textContent='Introduce el UID.'; return; }
+    const val = tipo==='profesor' ? {rol:'profesor', clase:$('#rolClase').value} : tipo;
+    try{ await set(ref(db,'roles/'+uid),val); $('#rolStatus').textContent='Guardado ✓'; $('#rolUid').value=''; }
+    catch(e){ $('#rolStatus').textContent='Error: '+e.message; }
+    setTimeout(()=>$('#rolStatus').textContent='',2500);
   });
 }
 
@@ -789,9 +814,18 @@ async function syncOfficialRoster(){
   $('#syncOfficialStatus').textContent=`Sincronizados ${OFFICIAL_STUDENTS.length}. Extras conservados: ${extras.length}.`;
 }
 if(rol==='admin') $('#btnSyncOfficial').addEventListener('click',async()=>{
-  if(!confirm('Se sincronizarán los 198 alumnos y las 9 clases oficiales. Se conservarán alergias, pagos y becas existentes cuando se encuentre el mismo alumno. ¿Continuar?')) return;
-  $('#syncOfficialStatus').textContent='Sincronizando…';
-  try{await syncOfficialRoster();}catch(e){$('#syncOfficialStatus').textContent='Error: '+e.message;}
+  const st=$('#syncOfficialStatus');
+  const f=$('#fileOfficial').files[0];
+  if(!f){ st.textContent='Primero elige el archivo JSON del alumnado.'; return; }
+  let data;
+  try{ data=JSON.parse(await f.text()); }catch(e){ st.textContent='El archivo no es un JSON válido.'; return; }
+  const okClases=new Set(CLASSES_DEFAULT);
+  const bad=!Array.isArray(data)||data.length===0||data.some(o=>!o||!/^ALU-\d{4}$/.test(o.id||'')||!o.nombre||!okClases.has(o.clase));
+  if(bad){ st.textContent='El archivo no tiene el formato esperado (id ALU-0000, nombre, clase oficial).'; return; }
+  if(!confirm(`Se sincronizarán ${data.length} alumnos y las ${CLASSES_DEFAULT.length} clases oficiales. Se conservarán alergias, pagos y becas existentes cuando se encuentre el mismo alumno. ¿Continuar?`)) return;
+  OFFICIAL_STUDENTS=data;
+  st.textContent='Sincronizando…';
+  try{await syncOfficialRoster();}catch(e){st.textContent='Error: '+e.message;}
 });
 
 /* ---------------- Import Excel/CSV ---------------- */
