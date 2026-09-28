@@ -385,8 +385,31 @@ canvas{max-width:100%;}
 
   <!-- ============ VISTA TESORERÍA ============ -->
   <section id="view-tesoreria" class="hidden">
+
+    <!-- ---- Cuentas del curso (datos oficiales, agregados por categoría) ---- -->
+    <div class="card" id="sec-tes-resumen">
+      <div class="row" style="justify-content:space-between;">
+        <h2>Cuentas del curso</h2>
+        <select id="tesCursoSel" style="max-width:140px;"></select>
+      </div>
+      <div class="grid-stats" id="tesResumenStats"></div>
+      <div class="grid gap-6" style="display:grid;gap:1rem;grid-template-columns:1fr;margin-top:.8rem;">
+        <div><h3 style="color:var(--emerald-text);">Ingresos</h3><div id="tesResumenIngresos"></div></div>
+        <div><h3 style="color:var(--rose-text);">Gastos</h3><div id="tesResumenGastos"></div></div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="sec-tes-sync">
+      <h2>Sincronizar cuentas del curso</h2>
+      <p class="small">Sube el archivo JSON con las cuentas agregadas por categoría (el mismo formato que usa la página pública "Cuentas Transparentes"). Sustituye los datos guardados.</p>
+      <input type="file" id="fileResumen">
+      <button id="btnSyncResumen" style="margin-top:.5rem;">Sincronizar cuentas</button>
+      <span id="syncResumenStatus" class="small"></span>
+    </div>
+
+    <!-- ---- Movimientos (registro día a día) ---- -->
     <div class="card" id="sec-tes-inicio">
-      <h2>Resumen</h2>
+      <h2>Resumen de movimientos</h2>
       <div class="grid-stats" id="tesStats"></div>
     </div>
 
@@ -573,10 +596,13 @@ const AREAS = {
     label: 'Tesorería',
     subtitle: 'Ingresos, gastos y presupuesto',
     items: [
+      {header:'Cuentas del curso'},
+      ['#sec-tes-resumen','Resumen por curso'],
+      {header:'Movimientos'},
       ['#sec-tes-inicio','Resumen'],
       ['#sec-tes-import','Importar extracto'],
       ['#sec-tes-manual','Añadir movimiento'],
-      ['#sec-tes-movs','Movimientos']
+      ['#sec-tes-movs','Listado']
     ]
   }
 };
@@ -585,8 +611,10 @@ const AREAS = {
 function canAccess(area){ return rol===area || rol==='admin'; }
 
 const ADMIN_HOME_ITEMS = [
-  ['#sec-inicio','Hoy de un vistazo'],
+  {header:'General'},
   ['#sec-enlaces','Usuarios y roles'],
+  {header:'Comedor'},
+  ['#sec-inicio','Hoy de un vistazo'],
   ['#sec-import','Importar alumnos'],
   ['#sec-menu','Menú semanal'],
   ['#sec-precios','Precios'],
@@ -611,7 +639,11 @@ function renderSideNav(items, subtitle){
   if(!items || !items.length){ btn.classList.add('hidden'); return; }
   btn.classList.remove('hidden');
   $('#sideSub').textContent = subtitle || '';
-  $('#sideNav').innerHTML = items.map(([href,label])=>`<a href="${href}" ${href.startsWith('#action:')?'data-view-action="'+href.slice(8)+'"':''}>${label}</a>`).join('');
+  $('#sideNav').innerHTML = items.map(it=>{
+    if(it.header) return `<div class="small" style="font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:.9rem .8rem .3rem;">${it.header}</div>`;
+    const [href,label] = it;
+    return `<a href="${href}" ${href.startsWith('#action:')?'data-view-action="'+href.slice(8)+'"':''}>${label}</a>`;
+  }).join('');
   $$('#sideNav a').forEach(a=>a.addEventListener('click', e=>{
     const target = a.dataset.viewAction;
     if(target){ e.preventDefault(); (target==='admin' ? goToAdminHome : ()=>goToArea(target))(); }
@@ -622,7 +654,8 @@ function renderSideNav(items, subtitle){
 function goToAdminHome(){
   showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
   const supervisar = Object.entries(AREAS).map(([key,a])=>['#action:'+key, a.icon+' Supervisar '+a.label]);
-  renderSideNav([...supervisar, ...ADMIN_HOME_ITEMS], 'Panel de la AFA');
+  const otrasAreas = supervisar.length ? [{header:'Otras áreas'}, ...supervisar] : [];
+  renderSideNav([...ADMIN_HOME_ITEMS, ...otrasAreas], 'Panel de la AFA');
   window.scrollTo({top:0});
 }
 function goToArea(key){
@@ -968,7 +1001,62 @@ function parseCSVtext(text){
   return text.split(/\r?\n/).filter(l=>l.trim()!=='').map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
 }
 
+let tesResumen = null;
+
+function renderResumenCurso(){
+  const box=$('#tesResumenStats'), boxI=$('#tesResumenIngresos'), boxG=$('#tesResumenGastos'), sel=$('#tesCursoSel');
+  if(!tesResumen || !tesResumen.cursos || !tesResumen.cursos.length){
+    box.innerHTML = '<p class="small">Todavía no hay cuentas oficiales cargadas para ningún curso.</p>';
+    boxI.innerHTML=''; boxG.innerHTML=''; sel.innerHTML='';
+    return;
+  }
+  const cur = sel.value && tesResumen.cursos.includes(sel.value) ? sel.value : (tesResumen.actual || tesResumen.cursos[tesResumen.cursos.length-1]);
+  if(sel.innerHTML==='' ) sel.innerHTML = tesResumen.cursos.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = cur;
+  const dc = (tesResumen.datos && tesResumen.datos[cur]) || {i:[],g:[]};
+  const ti = (dc.i||[]).reduce((s,x)=>s+x.v,0), tg = (dc.g||[]).reduce((s,x)=>s+x.v,0);
+  box.innerHTML = `
+    <div class="stat"><div class="n">${euro(ti)}</div><div class="l">Ingresos del curso</div></div>
+    <div class="stat"><div class="n">${euro(tg)}</div><div class="l">Gastos del curso</div></div>
+    <div class="stat"><div class="n" style="color:${ti-tg>=0?'var(--emerald)':'var(--rose)'}">${ti-tg>=0?'+':''}${euro(ti-tg)}</div><div class="l">Balance</div></div>`;
+  const fila = (x,total,color)=>{
+    const pct = total>0 ? Math.round(x.v/total*100) : 0;
+    return `<div style="margin-bottom:.6rem;">
+      <div class="row" style="justify-content:space-between;"><span style="font-weight:600;">${x.n}</span><span class="small">${euro(x.v)}</span></div>
+      <div style="background:var(--paper);border-radius:999px;height:8px;overflow:hidden;margin-top:.2rem;">
+        <div style="width:${pct}%;height:100%;background:${color};"></div>
+      </div>
+    </div>`;
+  };
+  boxI.innerHTML = (dc.i||[]).slice().sort((a,b)=>b.v-a.v).map(x=>fila(x,ti,'var(--emerald)')).join('') || '<p class="small">Sin datos.</p>';
+  boxG.innerHTML = (dc.g||[]).slice().sort((a,b)=>b.v-a.v).map(x=>fila(x,tg,'var(--rose)')).join('') || '<p class="small">Sin datos.</p>';
+}
+
 if(canAccess('tesoreria')){
+  onValue(ref(db,'tesoreria/resumen'), snap=>{
+    tesResumen = snap.exists() ? snap.val() : null;
+    renderResumenCurso();
+  });
+  $('#tesCursoSel').addEventListener('change', renderResumenCurso);
+
+  if(rol==='admin'){
+    $('#sec-tes-sync').classList.remove('hidden');
+    $('#btnSyncResumen').addEventListener('click', async ()=>{
+      const st=$('#syncResumenStatus');
+      const f=$('#fileResumen').files[0];
+      if(!f){ st.textContent='Elige primero el archivo JSON.'; return; }
+      let data;
+      try{ data=JSON.parse(await f.text()); }catch(e){ st.textContent='El archivo no es un JSON válido.'; return; }
+      if(!data || !Array.isArray(data.cursos) || typeof data.datos!=='object'){
+        st.textContent='El archivo no tiene el formato esperado (cursos, datos, actual, saldo...).'; return;
+      }
+      if(!confirm(`Se sustituirán las cuentas guardadas por las ${data.cursos.length} cursos de este archivo. ¿Continuar?`)) return;
+      st.textContent='Guardando…';
+      try{ await set(ref(db,'tesoreria/resumen'), data); st.textContent='Sincronizado ✓'; $('#fileResumen').value=''; }
+      catch(e){ st.textContent='Error: '+e.message; }
+    });
+  }
+
   onValue(ref(db,'tesoreria/movimientos'), snap=>{
     tesMovimientos = snap.val() || {};
     renderTesTodo();
