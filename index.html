@@ -140,17 +140,47 @@ canvas{max-width:100%;}
 .allergy-box{background:var(--rose-bg);border:1px solid #FBCFE8;border-radius:12px;padding:.7rem;margin-top:.6rem;}
 .sync-ok{background:var(--emerald-bg);border:1px solid #A7F3D0;color:var(--emerald-text);border-radius:12px;padding:.7rem;}
 @media(max-width:600px){button{min-height:44px}.students li{align-items:flex-start}.menu-day{grid-template-columns:78px 1fr}}
+.menu-btn{background:transparent;border:none;color:#fff;padding:.3rem;line-height:0;border-radius:8px;}
+.menu-btn:hover{background:rgba(255,255,255,.15);}
+.menu-btn svg{width:26px;height:26px;display:block;}
+#sideOverlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:20;opacity:0;pointer-events:none;transition:opacity .2s;}
+#sideOverlay.open{opacity:1;pointer-events:auto;}
+#sideMenu{position:fixed;top:0;left:0;bottom:0;width:78vw;max-width:300px;background:#fff;z-index:21;
+  box-shadow:2px 0 16px rgba(15,23,42,.18);transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);}
+#sideMenu.open{transform:translateX(0);}
+#sideMenu .side-head{background:linear-gradient(135deg,var(--sky-800),var(--sky-700) 55%,var(--teal-600));
+  color:#fff;padding:1.1rem 1.1rem .9rem;}
+#sideMenu .side-head strong{display:block;font-size:1rem;}
+#sideMenu .side-head span{font-size:.78rem;opacity:.85;}
+#sideMenu nav{flex:1;overflow-y:auto;padding:.6rem;}
+#sideMenu nav a{display:block;padding:.8rem .8rem;border-radius:10px;color:var(--ink);text-decoration:none;
+  font-weight:600;font-size:.95rem;margin-bottom:.15rem;}
+#sideMenu nav a:hover,#sideMenu nav a:active{background:var(--paper);}
+#sideMenu .side-foot{padding:.8rem;border-top:1px solid var(--line);}
 </style>
 </head>
 <body>
 
 <header class="top">
-  <div>
-    <h1 id="pageTitle">🍽️ Comedor AFA</h1>
-    <div class="sub" id="pageSubtitle"></div>
+  <div class="row" style="gap:.6rem;">
+    <button id="btnMenu" class="menu-btn hidden" aria-label="Abrir menú" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div>
+      <h1 id="pageTitle">🍽️ Comedor AFA</h1>
+      <div class="sub" id="pageSubtitle"></div>
+    </div>
   </div>
   <div id="userBar" class="userbar hidden"><span id="userEmail"></span><button id="btnLogout" class="secondary">Salir</button></div>
 </header>
+
+<div id="sideOverlay"></div>
+<aside id="sideMenu" aria-label="Menú de secciones">
+  <div class="side-head"><strong>🍽️ Comedor AFA</strong><span id="sideSub"></span></div>
+  <nav id="sideNav"></nav>
+  <div class="side-foot"><button id="btnMenuLogout" class="secondary hidden" style="width:100%;">Salir</button></div>
+</aside>
 
 <main id="app">
 
@@ -246,7 +276,7 @@ canvas{max-width:100%;}
 
     <div id="adminBanner"></div>
 
-    <div class="card">
+    <div class="card" id="sec-inicio">
       <h2>Hoy de un vistazo</h2>
       <div class="row" style="justify-content:space-between;">
         <div class="flexcol"><label class="small">Fecha</label><input type="date" id="adminDate"></div>
@@ -260,17 +290,6 @@ canvas{max-width:100%;}
       </div>
       <div class="grid-stats" id="adminDayStats"></div>
       <canvas id="chartDay" height="140"></canvas>
-    </div>
-
-    <div class="navpills">
-      <a href="#sec-enlaces">Usuarios y roles</a>
-      <a href="#sec-import">Importar alumnos</a>
-      <a href="#sec-precios">Precios</a>
-      <a href="#sec-menu">Menú semanal</a>
-      <a href="#sec-mes">Resumen mensual</a>
-      <a href="#sec-alumnos">Alumnos y becas</a>
-      <a href="#sec-clases">Clases</a>
-      <a href="#sec-export">Exportar datos</a>
     </div>
 
     <div class="card" id="sec-enlaces">
@@ -502,6 +521,45 @@ function showSection(id, title, subtitle){
   $('#pageSubtitle').textContent = subtitle || '';
 }
 
+/* ---------------- Menú lateral ---------------- */
+const SIDE_SECTIONS = {
+  admin: [
+    ['#sec-inicio','Hoy de un vistazo'],
+    ['#sec-enlaces','Usuarios y roles'],
+    ['#sec-import','Importar alumnos'],
+    ['#sec-menu','Menú semanal'],
+    ['#sec-precios','Precios'],
+    ['#sec-mes','Resumen mensual'],
+    ['#sec-alumnos','Alumnos y becas'],
+    ['#sec-clases','Clases'],
+    ['#sec-export','Exportar datos']
+  ]
+};
+function closeSideMenu(){
+  $('#sideMenu').classList.remove('open');
+  $('#sideOverlay').classList.remove('open');
+  $('#btnMenu').setAttribute('aria-expanded','false');
+}
+function openSideMenu(){
+  $('#sideMenu').classList.add('open');
+  $('#sideOverlay').classList.add('open');
+  $('#btnMenu').setAttribute('aria-expanded','true');
+}
+function setupSideMenu(subtitle){
+  const items = SIDE_SECTIONS[rol];
+  const btn = $('#btnMenu');
+  if(!items || !items.length){ btn.classList.add('hidden'); return; }
+  btn.classList.remove('hidden');
+  $('#sideSub').textContent = subtitle || '';
+  $('#sideNav').innerHTML = items.map(([href,label])=>`<a href="${href}">${label}</a>`).join('');
+  $$('#sideNav a').forEach(a=>a.addEventListener('click', closeSideMenu));
+  $('#btnMenuLogout').classList.remove('hidden');
+}
+$('#btnMenu').addEventListener('click', ()=> $('#sideMenu').classList.contains('open') ? closeSideMenu() : openSideMenu());
+$('#sideOverlay').addEventListener('click', closeSideMenu);
+$('#btnMenuLogout').addEventListener('click', ()=>{ closeSideMenu(); signOut(auth); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSideMenu(); });
+
 if(rol==='profesor'){
   if(claseParam){ showSection('view-profesor','🍽️ Comedor — Profesorado', claseParam); }
   else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
@@ -512,6 +570,7 @@ if(rol==='profesor'){
 } else {
   showSection('view-none','🍽️ Comedor AFA');
 }
+setupSideMenu($('#pageSubtitle').textContent);
 
 /* ---------------- Estado global en memoria (reflejo de Firebase) ---------------- */
 let classesList = [...CLASSES_DEFAULT];
