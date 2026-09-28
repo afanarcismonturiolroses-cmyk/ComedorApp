@@ -562,34 +562,40 @@ function showSection(id, title, subtitle){
   $('#pageSubtitle').textContent = subtitle || '';
 }
 
-/* ---------------- Menú lateral ---------------- */
-const SIDE_SECTIONS = {
-  admin: [
-    ['#action:tesoreria','💰 Supervisar Tesorería'],
-    ['#sec-inicio','Hoy de un vistazo'],
-    ['#sec-enlaces','Usuarios y roles'],
-    ['#sec-import','Importar alumnos'],
-    ['#sec-menu','Menú semanal'],
-    ['#sec-precios','Precios'],
-    ['#sec-mes','Resumen mensual'],
-    ['#sec-alumnos','Alumnos y becas'],
-    ['#sec-clases','Clases'],
-    ['#sec-export','Exportar datos']
-  ],
-  tesoreria: [
-    ['#sec-tes-inicio','Resumen'],
-    ['#sec-tes-import','Importar extracto'],
-    ['#sec-tes-manual','Añadir movimiento'],
-    ['#sec-tes-movs','Movimientos']
-  ],
-  tesoreria_admin: [
-    ['#action:admin','◀ Volver a Comedor'],
-    ['#sec-tes-inicio','Resumen'],
-    ['#sec-tes-import','Importar extracto'],
-    ['#sec-tes-manual','Añadir movimiento'],
-    ['#sec-tes-movs','Movimientos']
-  ]
+/* ---------------- Áreas de la plataforma (más allá del comedor) ----------------
+   Registro único de áreas/módulos. Añadir una nueva aquí (con su vista y sus
+   secciones) hace que, automáticamente, admin pueda supervisarla desde su menú,
+   sin tocar nada más de esta lógica de navegación. */
+const AREAS = {
+  tesoreria: {
+    view: 'view-tesoreria',
+    icon: '💰',
+    label: 'Tesorería',
+    subtitle: 'Ingresos, gastos y presupuesto',
+    items: [
+      ['#sec-tes-inicio','Resumen'],
+      ['#sec-tes-import','Importar extracto'],
+      ['#sec-tes-manual','Añadir movimiento'],
+      ['#sec-tes-movs','Movimientos']
+    ]
+  }
 };
+// El rol admin es universal: tiene acceso a cualquier área registrada arriba,
+// además de a las suyas propias, sin necesidad de listarlo aparte.
+function canAccess(area){ return rol===area || rol==='admin'; }
+
+const ADMIN_HOME_ITEMS = [
+  ['#sec-inicio','Hoy de un vistazo'],
+  ['#sec-enlaces','Usuarios y roles'],
+  ['#sec-import','Importar alumnos'],
+  ['#sec-menu','Menú semanal'],
+  ['#sec-precios','Precios'],
+  ['#sec-mes','Resumen mensual'],
+  ['#sec-alumnos','Alumnos y becas'],
+  ['#sec-clases','Clases'],
+  ['#sec-export','Exportar datos']
+];
+
 function closeSideMenu(){
   $('#sideMenu').classList.remove('open');
   $('#sideOverlay').classList.remove('open');
@@ -600,8 +606,7 @@ function openSideMenu(){
   $('#sideOverlay').classList.add('open');
   $('#btnMenu').setAttribute('aria-expanded','true');
 }
-function setupSideMenu(menuKey, subtitle){
-  const items = SIDE_SECTIONS[menuKey];
+function renderSideNav(items, subtitle){
   const btn = $('#btnMenu');
   if(!items || !items.length){ btn.classList.add('hidden'); return; }
   btn.classList.remove('hidden');
@@ -609,19 +614,22 @@ function setupSideMenu(menuKey, subtitle){
   $('#sideNav').innerHTML = items.map(([href,label])=>`<a href="${href}" ${href.startsWith('#action:')?'data-view-action="'+href.slice(8)+'"':''}>${label}</a>`).join('');
   $$('#sideNav a').forEach(a=>a.addEventListener('click', e=>{
     const target = a.dataset.viewAction;
-    if(target){ e.preventDefault(); goToAdminView(target); }
+    if(target){ e.preventDefault(); (target==='admin' ? goToAdminHome : ()=>goToArea(target))(); }
     closeSideMenu();
   }));
   $('#btnMenuLogout').classList.remove('hidden');
 }
-function goToAdminView(target){
-  if(target==='tesoreria'){
-    showSection('view-tesoreria','💰 AFA — Tesorería (supervisión)','Vista de administración');
-    setupSideMenu('tesoreria_admin');
-  } else {
-    showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
-    setupSideMenu('admin');
-  }
+function goToAdminHome(){
+  showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
+  const supervisar = Object.entries(AREAS).map(([key,a])=>['#action:'+key, a.icon+' Supervisar '+a.label]);
+  renderSideNav([...supervisar, ...ADMIN_HOME_ITEMS], 'Panel de la AFA');
+  window.scrollTo({top:0});
+}
+function goToArea(key){
+  const a = AREAS[key];
+  const supervisando = rol==='admin';
+  showSection(a.view, `${a.icon} AFA — ${a.label}${supervisando?' (supervisión)':''}`, a.subtitle);
+  renderSideNav(supervisando ? [['#action:admin','◀ Volver a Comedor'], ...a.items] : a.items, a.subtitle);
   window.scrollTo({top:0});
 }
 $('#btnMenu').addEventListener('click', ()=> $('#sideMenu').classList.contains('open') ? closeSideMenu() : openSideMenu());
@@ -634,14 +642,13 @@ if(rol==='profesor'){
   else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
 } else if(rol==='monitora'){
   showSection('view-monitora','🍽️ Comedor — Monitora','Recuento y confirmación');
-} else if(rol==='tesoreria'){
-  showSection('view-tesoreria','💰 AFA — Tesorería','Ingresos, gastos y presupuesto');
 } else if(rol==='admin'){
-  showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
+  goToAdminHome();
+} else if(AREAS[rol]){
+  goToArea(rol);
 } else {
   showSection('view-none','🍽️ Comedor AFA');
 }
-setupSideMenu(rol, $('#pageSubtitle').textContent);
 
 /* ---------------- Estado global en memoria (reflejo de Firebase) ---------------- */
 let classesList = [...CLASSES_DEFAULT];
@@ -961,7 +968,7 @@ function parseCSVtext(text){
   return text.split(/\r?\n/).filter(l=>l.trim()!=='').map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
 }
 
-if(rol==='tesoreria' || rol==='admin'){
+if(canAccess('tesoreria')){
   onValue(ref(db,'tesoreria/movimientos'), snap=>{
     tesMovimientos = snap.val() || {};
     renderTesTodo();
