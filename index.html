@@ -1044,11 +1044,16 @@ if(canAccess('tesoreria')){
     $('#btnSyncResumen').addEventListener('click', async ()=>{
       const st=$('#syncResumenStatus');
       const f=$('#fileResumen').files[0];
-      if(!f){ st.textContent='Elige primero el archivo JSON.'; return; }
-      let data;
-      try{ data=JSON.parse(await f.text()); }catch(e){ st.textContent='El archivo no es un JSON válido.'; return; }
+      if(!f){ st.textContent='Elige primero el archivo (el JSON o el HTML de Cuentas Transparentes).'; return; }
+      const raw = await f.text();
+      let data = null;
+      try{ data = JSON.parse(raw); }
+      catch(e){
+        const m = raw.match(/const D\s*=\s*(\{[\s\S]*?\});/);
+        if(m){ try{ data = JSON.parse(m[1]); }catch(e2){ data = null; } }
+      }
       if(!data || !Array.isArray(data.cursos) || typeof data.datos!=='object'){
-        st.textContent='El archivo no tiene el formato esperado (cursos, datos, actual, saldo...).'; return;
+        st.textContent='No se han reconocido las cuentas en este archivo. Sube el JSON de resumen o el HTML de Cuentas Transparentes.'; return;
       }
       if(!confirm(`Se sustituirán las cuentas guardadas por las ${data.cursos.length} cursos de este archivo. ¿Continuar?`)) return;
       st.textContent='Guardando…';
