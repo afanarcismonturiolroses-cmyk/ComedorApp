@@ -152,8 +152,8 @@
       <h2>🔐 Acceso al comedor</h2>
       <p class="small">Inicia sesión con tu cuenta autorizada de la AFA.</p>
       <div class="flexcol">
-        <label class="small">Correo electrónico</label>
-        <input type="email" id="loginEmail" autocomplete="username" placeholder="correo@ejemplo.com">
+        <label class="small">Usuario o correo</label>
+        <input type="text" id="loginEmail" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Usuario (p. ej. 4t) o correo">
         <label class="small">Contraseña</label>
         <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Contraseña">
         <button id="btnLogin">Entrar</button>
@@ -275,6 +275,17 @@
         <button id="btnGuardarRol">Guardar rol</button>
         <span id="rolStatus" class="small"></span>
       </div>
+      <h3 style="margin-top:1rem;">Crear una cuenta</h3>
+      <p class="small">Escribe el usuario (p. ej. <code>4t</code>) y una contraseña de al menos 6 caracteres. Usa los selectores de arriba para el rol y la clase.</p>
+      <div class="flexcol">
+        <input id="newUser" placeholder="Usuario (p. ej. 4t, flor)" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <input id="newPass" placeholder="Contraseña (mín. 6 caracteres)" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <button id="btnCrearCuenta">Crear cuenta con el rol elegido arriba</button>
+        <button id="btnCrearTodas" class="secondary">Crear cuentas de prueba: 9 clases + monitora (flor)</button>
+        <span id="cuentaStatus" class="small"></span>
+        <textarea id="cuentasResultado" class="hidden" rows="8" readonly style="font-size:.85rem;"></textarea>
+        <button id="btnCopiarCuentas" class="secondary hidden">Copiar lista de usuarios y contraseñas</button>
+      </div>
       <h3 style="margin-top:1rem;">Roles asignados</h3>
       <div id="rolesList"></div>
       <div id="enlacesList" class="hidden"></div>
@@ -350,8 +361,8 @@
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 import {
   getDatabase, ref, onValue, set, update, push, remove, get
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
@@ -368,14 +379,18 @@ const viewLogin = document.querySelector("#view-login");
 const userBar = document.querySelector("#userBar");
 const userEmail = document.querySelector("#userEmail");
 
+const USER_DOMAIN='@comedorafa.local';
+function normUser(u){ return String(u||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,''); }
+function toLoginEmail(u){ u=String(u||'').trim(); return u.includes('@') ? u : normUser(u)+USER_DOMAIN; }
 function showLoginError(message){ loginError.textContent = message; loginError.classList.remove("hidden"); }
 
 loginEmail.addEventListener("keydown", e=>{ if(e.key==="Enter") loginPassword.focus(); });
 loginPassword.addEventListener("keydown", e=>{ if(e.key==="Enter") document.querySelector("#btnLogin").click(); });
 document.querySelector("#btnLogin").addEventListener("click", async ()=>{
-  const email=loginEmail.value.trim(), password=loginPassword.value;
+  const rawUser=loginEmail.value.trim(), password=loginPassword.value;
   loginError.classList.add("hidden");
-  if(!email || !password){ showLoginError("Introduce el correo y la contraseña."); return; }
+  if(!rawUser || !password){ showLoginError("Introduce el usuario y la contraseña."); return; }
+  const email = toLoginEmail(rawUser);
   const btn=document.querySelector("#btnLogin"); btn.disabled=true; btn.textContent="Entrando…";
   try{ await signInWithEmailAndPassword(auth,email,password); }
   catch(e){ console.error("Firebase Auth error:", e); showLoginError(`Error Firebase: ${e.code || "desconocido"} — ${e.message || "sin detalle"}`); }
@@ -795,6 +810,62 @@ if(rol==='admin'){
       if(!confirm('¿Quitar este rol?')) return;
       await remove(ref(db,'roles/'+b.dataset.uid));
     }));
+  });
+  async function crearCuenta(usuario, password, tipo, clase){
+    const email = toLoginEmail(usuario);
+    const sec = initializeApp(window.FIREBASE_CONFIG, 'sec'+Date.now()+Math.floor(Math.random()*1000));
+    try{
+      const sAuth = getAuth(sec);
+      const cred = await createUserWithEmailAndPassword(sAuth, email, password);
+      await signOut(sAuth);
+      await set(ref(db,'roles/'+cred.user.uid), tipo==='profesor' ? {rol:'profesor', clase} : tipo);
+      return {email, uid:cred.user.uid};
+    } finally { try{ await deleteApp(sec); }catch(_){} }
+  }
+  function msgErrorCuenta(e){
+    const c=e.code||'';
+    if(c==='auth/email-already-in-use') return 'ese usuario ya existe';
+    if(c==='auth/weak-password') return 'contraseña demasiado corta (mín. 6)';
+    if(c==='auth/invalid-email') return 'usuario no válido';
+    if(c==='auth/operation-not-allowed') return 'el acceso con correo/contraseña no está habilitado';
+    return (c||'')+' '+(e.message||e);
+  }
+  function passAleatoria(n=8){
+    const abc='abcdefghjkmnpqrstuvwxyz23456789'; const a=new Uint32Array(n); crypto.getRandomValues(a);
+    return Array.from(a,x=>abc[x%abc.length]).join('');
+  }
+  $('#btnCrearCuenta').addEventListener('click', async ()=>{
+    const st=$('#cuentaStatus'); const user=$('#newUser').value.trim(); const pass=$('#newPass').value;
+    const tipo=$('#rolTipo').value; const clase=$('#rolClase').value;
+    if(!user||!pass){ st.textContent='Escribe usuario y contraseña.'; return; }
+    if(pass.length<6){ st.textContent='La contraseña debe tener al menos 6 caracteres.'; return; }
+    st.textContent='Creando…'; $('#btnCrearCuenta').disabled=true;
+    try{
+      await crearCuenta(user,pass,tipo,clase);
+      st.textContent=`Cuenta creada ✓  Usuario: ${normUser(user)}  Contraseña: ${pass}`;
+      $('#newUser').value=''; $('#newPass').value='';
+    }catch(e){ st.textContent='Error: '+msgErrorCuenta(e); }
+    $('#btnCrearCuenta').disabled=false;
+  });
+  const CUENTAS_PRUEBA=[['I3 Infantil','i3'],['I4 Infantil','i4'],['I5 Infantil','i5'],['1r Primària','1r'],['2n Primària','2n'],['3r Primària','3r'],['4t Primària','4t'],['5è Primària','5e'],['6è Primària','6e']];
+  $('#btnCrearTodas').addEventListener('click', async ()=>{
+    if(!confirm('Se crearán 10 cuentas: una por clase (usuarios i3, i4, i5, 1r, 2n, 3r, 4t, 5e, 6e) y la monitora (flor), con contraseñas aleatorias que verás una sola vez. ¿Continuar?')) return;
+    const st=$('#cuentaStatus'), box=$('#cuentasResultado'); $('#btnCrearTodas').disabled=true;
+    const lines=[];
+    const lista=[...CUENTAS_PRUEBA.map(([clase,u])=>({u,clase,tipo:'profesor'})), {u:'flor',clase:'',tipo:'monitora'}];
+    for(let i=0;i<lista.length;i++){
+      const it=lista[i]; const pass=passAleatoria(); st.textContent=`Creando ${i+1} de ${lista.length}…`;
+      try{
+        await crearCuenta(it.u,pass,it.tipo,it.clase);
+        lines.push(`${it.u} · ${pass} · ${it.tipo==='profesor'?'profesorado '+it.clase:'monitora'}`);
+      }catch(e){ lines.push(`${it.u} · NO CREADA: ${msgErrorCuenta(e)}`); }
+    }
+    box.value=lines.join('\n'); box.classList.remove('hidden'); $('#btnCopiarCuentas').classList.remove('hidden');
+    st.textContent='Terminado. Guarda esta lista ahora: las contraseñas no se vuelven a mostrar.';
+    $('#btnCrearTodas').disabled=false;
+  });
+  $('#btnCopiarCuentas').addEventListener('click',()=>{
+    navigator.clipboard.writeText($('#cuentasResultado').value).then(()=>{ $('#cuentaStatus').textContent='Lista copiada ✓'; },()=>{ $('#cuentasResultado').select(); });
   });
   $('#rolTipo').addEventListener('change',()=>{ $('#rolClaseBox').classList.toggle('hidden',$('#rolTipo').value!=='profesor'); });
   $('#btnGuardarRol').addEventListener('click',async()=>{
