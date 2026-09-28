@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reparar index</title>
+<style>
+body{font-family:sans-serif;padding:1rem;font-size:16px}
+button{font:inherit;padding:.8em 1.2em;border:none;border-radius:8px;background:#2F6E4F;color:#fff;font-weight:700}
+button:disabled{opacity:.4}
+li{margin:.4rem 0}
+</style>
+</head>
+<body>
+<h3>Reparar index.html</h3>
+<ul id="log"></ul>
+<button id="btn" disabled>Copiar index.html reparado</button>
+
+<script>
+var L = document.getElementById('log');
+var btn = document.getElementById('btn');
+function say(t){ var li = document.createElement('li'); li.textContent = t; L.appendChild(li); }
+
+var LOADER = `async function loadRoleAndStart(user){
+  try{
+    const snap = await get(ref(db,'roles/'+user.uid));
+    const v = snap.exists() ? snap.val() : null;
+    let r = null, c = null;
+    if(typeof v === 'string'){ r = v; }
+    else if(v && typeof v === 'object'){ r = v.rol || null; c = v.clase || null; }
+    window.__ROL = r; window.__CLASE = c;
+  }catch(e){
+    console.error('No se pudo leer el rol:', e);
+    window.__ROL = null; window.__CLASE = null;
+  }
+  startApp();
+}
+
+function startApp(){`;
+
+var CHANGES = [
+  ["const rol = params.get('rol');", "const rol = window.__ROL;", true],
+  ["const claseParam = params.get('clase');", "const claseParam = window.__CLASE;", true],
+  ["if(!appStarted){ appStarted=true; startApp(); }", "if(!appStarted){ appStarted=true; loadRoleAndStart(user); }", true],
+  ["function startApp(){", LOADER, true],
+  ["<h2>Enlace no reconocido</h2>", "<h2>Sin permisos asignados</h2>", false],
+  ["Pide a Administración de la AFA tu enlace personalizado para acceder (profesorado, monitora o administración).", "Tu cuenta no tiene ningún rol asignado. Pide a Administración de la AFA que te lo active.", false]
+];
+
+fetch('index.html?t=' + Date.now(), { cache: 'no-store' })
+  .then(function(r){ return r.text(); })
+  .then(async function(html){
+    var lines = html.split('\n');
+    say('Descargado: ' + lines.length + ' líneas');
+
+    var closes = [];
+    for (var i = 0; i < lines.length; i++) { if (lines[i].trim() === '</main>') closes.push(i); }
+    say('Líneas "</main>" encontradas: ' + closes.length + ' (en las líneas ' + closes.map(function(x){ return x + 1; }).join(', ') + ')');
+    if (closes.length !== 2) { say('✗ Esperaba exactamente 2. Me paro sin tocar nada.'); return; }
+
+    var out = lines.slice(0, closes[0] + 1).concat(lines.slice(closes[1] + 1)).join('\n');
+    say('Quitado el trozo duplicado. Líneas ahora: ' + out.split('\n').length);
+
+    if (out.indexOf('loadRoleAndStart') >= 0) { say('✗ Aún queda código de roles duplicado. Me paro.'); return; }
+
+    for (var c = 0; c < CHANGES.length; c++) {
+      var ch = CHANGES[c];
+      var n = out.split(ch[0]).length - 1;
+      if (n === 1) { out = out.replace(ch[0], function(){ return ch[1]; }); say('✓ Cambio ' + (c + 1) + ' aplicado'); }
+      else if (ch[2]) { say('✗ Cambio ' + (c + 1) + ': encontrado ' + n + ' veces (debe ser 1). Me paro.'); return; }
+      else { say('· Cambio ' + (c + 1) + ' (texto opcional) no encontrado, se omite'); }
+    }
+
+    var re = new RegExp('<scr' + 'ipt type="module">([\\s\\S]*?)<\\/scr' + 'ipt>', 'g');
+    var blocks = [], m;
+    while ((m = re.exec(out))) blocks.push(m[1]);
+    say('Bloques módulo: ' + blocks.length);
+    var ok = true;
+    for (var k = 0; k < blocks.length; k++) {
+      var url = URL.createObjectURL(new Blob([blocks[k]], { type: 'text/javascript' }));
+      try { await import(url); }
+      catch (e) { if (e instanceof SyntaxError) { ok = false; say('✗ Error de sintaxis en bloque ' + (k + 1) + ': ' + e.message); } }
+    }
+    if (!ok) return;
+
+    var total = out.split('\n').length;
+    say('✓ Sin errores de sintaxis. LÍNEAS TOTALES: ' + total + ' (deben ser 1082)');
+    say('Caracteres: ' + out.length);
+    btn.disabled = false;
+    btn.onclick = function(){
+      navigator.clipboard.writeText(out).then(
+        function(){ say('✓ COPIADO (' + total + ' líneas).'); },
+        function(){ say('✗ No se pudo copiar automáticamente.'); }
+      );
+    };
+  })
+  .catch(function(e){ say('✗ Error: ' + e.message); });
+</script>
+</body>
+</html>
