@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comedor AFA</title>
+
+<!--
+  ============================================================================
+  CONFIGURACIÓN NECESARIA ANTES DE DESPLEGAR
+  ============================================================================
+  1) FIREBASE_CONFIG: claves de tu proyecto Firebase (públicas, no secretas).
+  2) EMAILJS_CONFIG: para la alarma por email cuando el semáforo se pone
+     ámbar/rojo. Pasos para crearlo (gratis, sin backend):
+       a) Crea una cuenta en https://www.emailjs.com
+       b) "Email Services" > añade tu Gmail (u otro) como servicio > copia el
+          Service ID.
+       c) "Email Templates" > crea una plantilla con variables {{date}},
+          {{total}}, {{color}} en el cuerpo del mensaje. En el campo "To Email"
+          de la plantilla escribe directamente, separados por coma:
+          afanarcismonturiolroses@gmail.com, escola b7003136@xtec.cat
+          (así no hace falta gestionar destinatarios desde el código).
+       d) "Account" > copia tu Public Key.
+       e) Pega los tres valores en EMAILJS_CONFIG más abajo.
+  3) La lista de clases se edita luego desde el panel de Administración.
+  4) ACCESO: Firebase Authentication (correo + contraseña).
+  5) Enlaces por rol: ahora requieren iniciar sesión; la URL ya no es la única barrera.
+       - Profesorado: ?rol=profesor&clase=NOMBRE_DE_LA_CLASE
+       - Monitora:    ?rol=monitora
+       - Administración: ?rol=admin
+     El propio panel de Administración genera y copia estos enlaces por ti.
+  ============================================================================
+-->
+
+<script type="module">
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBFun83wXZP5WF1sTBnoJwX9bEdtueWMbY",
+    authDomain: "comedorafa.firebaseapp.com",
+    databaseURL: "https://comedorafa-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "comedorafa",
+    storageBucket: "comedorafa.firebasestorage.app",
+    messagingSenderId: "1068343664940",
+    appId: "1:1068343664940:web:b91e68d5bb5fdf16320c89"
+  };
+  window.EMAILJS_CONFIG = {
+    serviceId: "TU_SERVICE_ID",
+    templateId: "TU_TEMPLATE_ID",
+    publicKey: "TU_PUBLIC_KEY"
+  };
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<style>
+  :root{
+    --paper:#F7F5EF; --ink:#1F2B22; --forest:#2F6E4F; --forest-dark:#204C37;
+    --mustard:#D9A441; --alert:#B3452F; --amber:#C98A1B; --line:#DFDACD; --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:600;margin:0 0 .3em;}
+  h1{font-size:1.4rem;color:var(--forest-dark);}
+  h2{font-size:1.15rem;}
+  h3{font-size:1rem;}
+  button{font:inherit;cursor:pointer;border:none;border-radius:8px;padding:.7em 1.1em;
+    background:var(--forest);color:#fff;font-weight:600;}
+  button.secondary{background:#fff;color:var(--forest-dark);border:1px solid var(--line);}
+  button.danger{background:var(--alert);}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  input,select,textarea{font:inherit;padding:.55em .6em;border:1px solid var(--line);border-radius:8px;
+    background:#fff;color:var(--ink);width:100%;}
+  a{color:var(--forest-dark);}
+  header.top{position:sticky;top:0;z-index:10;background:var(--forest-dark);color:#fff;
+    padding:calc(.8rem + env(safe-area-inset-top,0px)) 1rem .8rem;
+    display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
+  header.top h1{color:#fff;margin:0;font-size:1.15rem;}
+  header.top .sub{font-size:.85rem;opacity:.85;}
+  main{max-width:900px;margin:0 auto;padding:1rem;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:1rem;}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;}
+  .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin:.6rem 0;}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:.6rem;text-align:center;}
+  .stat .n{font-size:1.5rem;font-weight:700;color:var(--forest-dark);}
+  .stat .l{font-size:.78rem;color:#555;}
+  ul.students{list-style:none;margin:0;padding:0;}
+  ul.students li{display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+    padding:.65rem 0;border-bottom:1px solid var(--line);}
+  ul.students li:last-child{border-bottom:none;}
+  .name{font-weight:600;}
+  .tag{display:inline-block;font-size:.72rem;padding:.15em .5em;border-radius:6px;margin-left:.4em;}
+  .tag.alergia{background:#FBE4DF;color:var(--alert);}
+  .tag.becado{background:#FCEFD6;color:#8A5E12;}
+  .toggle{position:relative;width:52px;height:28px;flex:0 0 auto;}
+  .toggle input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;inset:0;background:#ddd;border-radius:999px;transition:.15s;}
+  .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;
+    border-radius:50%;transition:.15s;}
+  .toggle input:checked + .slider{background:var(--forest);}
+  .toggle input:checked + .slider:before{transform:translateX(24px);}
+  .hidden{display:none !important;}
+  .auth-card{max-width:430px;margin:3rem auto;}
+  .auth-error{background:#FBE4DF;color:var(--alert);padding:.7rem;border-radius:8px;margin-top:.6rem;font-size:.9rem;}
+  .userbar{display:flex;align-items:center;gap:.5rem;font-size:.8rem;}
+  .userbar button{padding:.45em .75em;font-size:.78rem;}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;}
+  table th,table td{text-align:left;padding:.4rem .3rem;border-bottom:1px solid var(--line);}
+  .small{font-size:.82rem;color:#555;}
+  canvas{max-width:100%;}
+  .flexcol{display:flex;flex-direction:column;gap:.4rem;}
+  .navpills{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .navpills a{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.4em .9em;
+    font-size:.85rem;text-decoration:none;color:var(--forest-dark);}
+  .semaforo{display:flex;align-items:center;gap:1rem;padding:1rem;border-radius:12px;color:#fff;font-weight:700;}
+  .semaforo.verde{background:var(--forest);}
+  .semaforo.amarillo{background:var(--amber);}
+  .semaforo.rojo{background:var(--alert);}
+  .semaforo .dot{width:20px;height:20px;border-radius:50%;background:#fff;flex:0 0 auto;}
+  .copyrow{display:flex;gap:.4rem;align-items:center;justify-content:space-between;
+    padding:.4rem 0;border-bottom:1px solid var(--line);}
+  .copyrow:last-child{border-bottom:none;}
+  .banner{padding:.8rem 1rem;border-radius:10px;margin-bottom:1rem;font-weight:600;color:#fff;}
+  .banner.amarillo{background:var(--amber);}
+  .banner.rojo{background:var(--alert);}
+  .msg-screen{max-width:480px;margin:3rem auto;text-align:center;padding:1rem;}
+  .menu-day{display:grid;grid-template-columns:95px 1fr;gap:.45rem;padding:.45rem 0;border-bottom:1px solid var(--line);}
+  .menu-day:last-child{border-bottom:none;}
+  .menu-date{font-weight:700;color:var(--forest-dark);}
+  .allergy-box{background:#FBE4DF;border:1px solid #E8B5AA;border-radius:10px;padding:.7rem;margin-top:.6rem;}
+  .sync-ok{background:#DCEEE2;border:1px solid #B7D7C1;color:#204C37;border-radius:10px;padding:.7rem;}
+  @media(max-width:600px){button{min-height:44px}.students li{align-items:flex-start}.menu-day{grid-template-columns:78px 1fr}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1 id="pageTitle">🍽️ Comedor AFA</h1>
+    <div class="sub" id="pageSubtitle"></div>
+  </div>
+  <div id="userBar" class="userbar hidden"><span id="userEmail"></span><button id="btnLogout" class="secondary">Salir</button></div>
+</header>
+
+<main id="app">
+
+  <!-- ============ ACCESO ============ -->
+  <section id="view-login">
+    <div class="auth-card card">
+      <h2>🔐 Acceso al comedor</h2>
+      <p class="small">Inicia sesión con tu cuenta autorizada de la AFA.</p>
+      <div class="flexcol">
+        <label class="small">Correo electrónico</label>
+        <input type="email" id="loginEmail" autocomplete="username" placeholder="correo@ejemplo.com">
+        <label class="small">Contraseña</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Contraseña">
+        <button id="btnLogin">Entrar</button>
+        <div id="loginError" class="auth-error hidden"></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="protectedApp" class="hidden">
+  <!-- ============ SIN ROL / ENLACE INVÁLIDO ============ -->
+  <section id="view-none" class="hidden">
+    <div class="msg-screen card">
+      <h2>Enlace no reconocido</h2>
+      <p class="small">Pide a Administración de la AFA tu enlace personalizado para acceder (profesorado, monitora o administración).</p>
+    </div>
+  </section>
+
+  <!-- ============ VISTA PROFESOR ============ -->
+  <section id="view-profesor" class="hidden">
+    <div class="card">
+      <input type="date" id="profesorDate" class="hidden">
+      <p class="small">Marca quién se queda hoy al comedor. Los cambios se guardan y sincronizan al instante.</p>
+    </div>
+    <div class="card"><h2>🍽️ Menú de la semana</h2><div id="profesorMenu" class="small">Cargando menú…</div></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <h2>Lista de la clase</h2>
+        <span class="small" id="profesorResumen"></span>
+      </div>
+      <ul class="students" id="profesorList"></ul>
+    </div>
+  </section>
+
+  <!-- ============ VISTA PROFESOR SIN CLASE ============ -->
+  <section id="view-profesor-noclase" class="hidden">
+    <div class="msg-screen card">
+      <h2>Falta la clase en el enlace</h2>
+      <p class="small">Este enlace de profesorado no indica una clase. Pide a Administración tu enlace personalizado (incluye <code>&clase=...</code>).</p>
+    </div>
+  </section>
+
+  <!-- ============ VISTA MONITORA ============ -->
+  <section id="view-monitora" class="hidden">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div class="flexcol"><label class="small">Fecha</label><input type="date" id="monitoraDate"></div>
+        <div class="flexcol"><label class="small">Monitores atendiendo hoy</label>
+          <input type="number" id="monitorsCount" min="0" style="max-width:100px;"></div>
+        <button id="btnAddExtra" class="secondary">+ Añadir niño/a no listado</button>
+      </div>
+      <div id="monitoraBanner"></div>
+      <div id="monitoraSemaforoBox" class="semaforo verde" style="margin-top:.4rem;">
+        <div class="dot"></div>
+        <div>
+          <div id="monitoraSemaforoTexto">Cargando…</div>
+          <div class="small" id="monitoraSemaforoDetalle" style="opacity:.9;"></div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:.6rem;">
+        <button id="btnProtocolo" class="danger">📞 Activar protocolo: llamar monitor extra</button>
+        <span class="small" id="protocoloStatus"></span>
+      </div>
+      <div class="grid-stats" id="monitoraStats"></div>
+    </div>
+    <div class="card">
+      <h2>🍽️ Menú de la semana</h2>
+      <div id="monitoraMenu" class="small">Cargando menú…</div>
+      <div id="monitoraAllergies"></div>
+    </div>
+    <div class="card">
+      <h2>Niños marcados para comer hoy</h2>
+      <p class="small">Confirma quién come realmente. Si alguien iba a quedarse y al final no, desmárcalo y anota la incidencia.</p>
+      <ul class="students" id="monitoraList"></ul>
+    </div>
+  </section>
+
+  <!-- ============ VISTA ADMIN (landing + secciones) ============ -->
+  <section id="view-admin" class="hidden">
+
+    <div id="adminBanner"></div>
+
+    <div class="card">
+      <h2>Hoy de un vistazo</h2>
+      <div class="row" style="justify-content:space-between;">
+        <div class="flexcol"><label class="small">Fecha</label><input type="date" id="adminDate"></div>
+      </div>
+      <div id="semaforoBox" class="semaforo verde" style="margin-top:.6rem;">
+        <div class="dot"></div>
+        <div>
+          <div id="semaforoTexto">Cargando…</div>
+          <div class="small" id="semaforoDetalle" style="opacity:.9;"></div>
+        </div>
+      </div>
+      <div class="grid-stats" id="adminDayStats"></div>
+      <canvas id="chartDay" height="140"></canvas>
+    </div>
+
+    <div class="navpills">
+      <a href="#sec-enlaces">Enlaces por rol</a>
+      <a href="#sec-import">Importar alumnos</a>
+      <a href="#sec-precios">Precios</a>
+      <a href="#sec-menu">Menú semanal</a>
+      <a href="#sec-mes">Resumen mensual</a>
+      <a href="#sec-alumnos">Alumnos y becas</a>
+      <a href="#sec-clases">Clases</a>
+      <a href="#sec-export">Exportar datos</a>
+    </div>
+
+    <div class="card" id="sec-enlaces">
+      <h2>Enlaces por rol</h2>
+      <p class="small">Comparte cada enlace solo con quien corresponda; es la única barrera de acceso.</p>
+      <div id="enlacesList"></div>
+    </div>
+
+    <div class="card" id="sec-import">
+      <h2>Importar lista de alumnos</h2>
+      <p class="small">Excel/CSV con columnas: nombre, clase, alergias, tipo de pago (mensual/quincena/esporadico), becado (sí/no), importe beca.</p>
+      <input type="file" id="fileImport" accept=".xlsx,.xls,.csv">
+      <div class="row" style="margin-top:.5rem;"><button id="btnPasteCSV" class="secondary">Pegar CSV como texto</button></div>
+      <textarea id="csvPasteArea" class="hidden" rows="5" placeholder="nombre,clase,alergias,tipoPago,becado,becaImporte" style="margin-top:.5rem;"></textarea>
+      <button id="btnImportPaste" class="hidden" style="margin-top:.5rem;">Importar texto pegado</button>
+      <p id="importStatus" class="small"></p>
+      <div class="sync-ok" style="margin-top:.7rem;"><strong>Base oficial 2026-2027</strong><br><span class="small">198 alumnos · 9 clases. Esta es la fuente maestra de alumnado.</span><br><button id="btnSyncOfficial" style="margin-top:.5rem;">Sincronizar alumnado oficial</button><span id="syncOfficialStatus" class="small" style="margin-left:.5rem"></span></div>
+    </div>
+
+    <div class="card" id="sec-menu">
+      <h2>🍽️ Menú semanal</h2>
+      <p class="small">Control semanal del menú. Flor lo consulta desde su vista de monitora.</p>
+      <div class="row"><div class="flexcol"><label class="small">Semana (lunes)</label><input type="date" id="menuWeek"></div></div>
+      <div id="menuEditor"></div>
+      <button id="btnGuardarMenu" style="margin-top:.6rem;">Guardar menú</button>
+      <span id="menuStatus" class="small"></span>
+    </div>
+
+    <div class="card" id="sec-precios">
+      <h2>Precios (configurables)</h2>
+      <div class="row">
+        <div class="flexcol"><label class="small">Día esporádico (€)</label><input type="number" id="precioEsporadico" step="0.5"></div>
+        <div class="flexcol"><label class="small">Medio mes (€)</label><input type="number" id="precioMedioMes" step="0.5"></div>
+        <div class="flexcol"><label class="small">Mes entero (€)</label><input type="number" id="precioMesEntero" step="0.5"></div>
+      </div>
+      <button id="btnGuardarPrecios" style="margin-top:.6rem;">Guardar precios</button>
+      <span id="preciosStatus" class="small"></span>
+    </div>
+
+    <div class="card" id="sec-mes">
+      <h2>Resumen mensual</h2>
+      <div class="row"><input type="month" id="adminMonth"></div>
+      <div class="grid-stats" id="adminMonthStats"></div>
+      <canvas id="chartMonthAttendance" height="140"></canvas>
+      <canvas id="chartMonthIncome" height="140" style="margin-top:1rem;"></canvas>
+    </div>
+
+    <div class="card" id="sec-alumnos">
+      <h2>Alumnos y becas (edición manual)</h2>
+      <div class="row"><select id="adminClassFilter"></select></div>
+      <div style="overflow-x:auto;">
+        <table id="adminStudentsTable">
+          <thead><tr><th>Alumno / ID</th><th>Alergias</th><th>Pago</th><th>Becado</th><th>Beca €</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="sec-clases">
+      <h2>Clases</h2>
+      <p class="small">Una por línea. Cambiarlo no borra alumnos ya asignados a clases existentes.</p>
+      <textarea id="classesEditor" rows="6"></textarea>
+      <button id="btnGuardarClases" style="margin-top:.5rem;">Guardar clases</button>
+    </div>
+
+    <div class="card" id="sec-export">
+      <h2>Exportar datos</h2>
+      <p class="small">Descarga un Excel con alumnos, asistencia del mes seleccionado arriba y el resumen mensual.</p>
+      <button id="btnExport">Descargar Excel</button>
+    </div>
+
+  </section>
+
+  </div>
+
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  getDatabase, ref, onValue, set, update, push, remove, get
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+const app = initializeApp(window.FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const loginEmail = document.querySelector("#loginEmail");
+const loginPassword = document.querySelector("#loginPassword");
+const loginError = document.querySelector("#loginError");
+const protectedApp = document.querySelector("#protectedApp");
+const viewLogin = document.querySelector("#view-login");
+const userBar = document.querySelector("#userBar");
+const userEmail = document.querySelector("#userEmail");
+
+function showLoginError(message){ loginError.textContent = message; loginError.classList.remove("hidden"); }
+
+loginEmail.addEventListener("keydown", e=>{ if(e.key==="Enter") loginPassword.focus(); });
+loginPassword.addEventListener("keydown", e=>{ if(e.key==="Enter") document.querySelector("#btnLogin").click(); });
+document.querySelector("#btnLogin").addEventListener("click", async ()=>{
+  const email=loginEmail.value.trim(), password=loginPassword.value;
+  loginError.classList.add("hidden");
+  if(!email || !password){ showLoginError("Introduce el correo y la contraseña."); return; }
+  const btn=document.querySelector("#btnLogin"); btn.disabled=true; btn.textContent="Entrando…";
+  try{ await signInWithEmailAndPassword(auth,email,password); }
+  catch(e){ console.error("Firebase Auth error:", e); showLoginError(`Error Firebase: ${e.code || "desconocido"} — ${e.message || "sin detalle"}`); }
+  finally{ btn.disabled=false; btn.textContent="Entrar"; }
+});
+document.querySelector("#btnLogout").addEventListener("click", ()=>signOut(auth));
+
+let appStarted=false;
+onAuthStateChanged(auth, user=>{
+  if(!user){
+    appStarted=false;
+    protectedApp.classList.add("hidden");
+    viewLogin.classList.remove("hidden");
+    userBar.classList.add("hidden");
+    return;
+  }
+  viewLogin.classList.add("hidden");
+  protectedApp.classList.remove("hidden");
+  userBar.classList.remove("hidden");
+  userEmail.textContent=user.email||"Usuario autenticado";
+  if(!appStarted){ appStarted=true; startApp(); }
+});
+
+function startApp(){
+if(window.emailjs && window.EMAILJS_CONFIG?.publicKey && window.EMAILJS_CONFIG.publicKey!=="TU_PUBLIC_KEY"){
+  emailjs.init(window.EMAILJS_CONFIG.publicKey);
+}
+
+const CLASSES_DEFAULT = ["4t Primària", "3r Primària", "2n Primària", "1r Primària", "5è Primària", "I3 Infantil", "I4 Infantil", "6è Primària", "I5 Infantil"];
+
+// Padrón oficial 2026-2027 generado desde Matriculados_2026-2027.xlsx.
+const OFFICIAL_STUDENTS = [{"id": "ALU-0001", "nombre": "Rayan", "apellidos": "Acherkouk el Kati", "clase": "4t Primària"}, {"id": "ALU-0002", "nombre": "Biel", "apellidos": "Avellaneda Yllueca", "clase": "4t Primària"}, {"id": "ALU-0003", "nombre": "Sara", "apellidos": "Ben Ali", "clase": "4t Primària"}, {"id": "ALU-0004", "nombre": "Ismael", "apellidos": "Ben Yahya Arabi", "clase": "4t Primària"}, {"id": "ALU-0005", "nombre": "Mourad", "apellidos": "Bounsser", "clase": "4t Primària"}, {"id": "ALU-0006", "nombre": "Elena", "apellidos": "Cindea", "clase": "4t Primària"}, {"id": "ALU-0007", "nombre": "Nayan", "apellidos": "Contreras Brunier", "clase": "4t Primària"}, {"id": "ALU-0008", "nombre": "Carla Georgiana", "apellidos": "Dobre", "clase": "4t Primària"}, {"id": "ALU-0009", "nombre": "Moad", "apellidos": "el Amrani Lacbir", "clase": "4t Primària"}, {"id": "ALU-0010", "nombre": "Zakariya", "apellidos": "el Lahyani Lamdaghri", "clase": "4t Primària"}, {"id": "ALU-0011", "nombre": "Paula", "apellidos": "Expósito Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0012", "nombre": "Matvii", "apellidos": "Fedoronchuk", "clase": "4t Primària"}, {"id": "ALU-0013", "nombre": "Emily Alexandra", "apellidos": "Garcia Zeron", "clase": "4t Primària"}, {"id": "ALU-0014", "nombre": "Aylin", "apellidos": "Gómez Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0015", "nombre": "Shabelys", "apellidos": "Lorenzo Romero", "clase": "4t Primària"}, {"id": "ALU-0016", "nombre": "Lina", "apellidos": "Maimouni", "clase": "4t Primària"}, {"id": "ALU-0017", "nombre": "Kheyra Janell", "apellidos": "Muñoz Gutiérrez", "clase": "4t Primària"}, {"id": "ALU-0018", "nombre": "Ramzi", "apellidos": "Namir", "clase": "4t Primària"}, {"id": "ALU-0019", "nombre": "Nil", "apellidos": "Pàramo Marioli", "clase": "4t Primària"}, {"id": "ALU-0020", "nombre": "Sergi", "apellidos": "Pascual Obrador", "clase": "4t Primària"}, {"id": "ALU-0021", "nombre": "Alessandra", "apellidos": "Pellegrini Maloku", "clase": "4t Primària"}, {"id": "ALU-0022", "nombre": "Shehryar", "apellidos": "Sadique Ijaz", "clase": "4t Primària"}, {"id": "ALU-0023", "nombre": "Álvaro", "apellidos": "Trigueros Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0024", "nombre": "Vega", "apellidos": "Valero Sastre", "clase": "4t Primària"}, {"id": "ALU-0025", "nombre": "Erin", "apellidos": "Werke Rodríguez", "clase": "4t Primària"}, {"id": "ALU-0026", "nombre": "Maury A.", "apellidos": "Wilson Tujano", "clase": "4t Primària"}, {"id": "ALU-0027", "nombre": "Daria Maria", "apellidos": "Zgripcea", "clase": "4t Primària"}, {"id": "ALU-0028", "nombre": "Inas", "apellidos": "Aluat", "clase": "3r Primària"}, {"id": "ALU-0029", "nombre": "Omar", "apellidos": "Baldeh", "clase": "3r Primària"}, {"id": "ALU-0030", "nombre": "Lucía", "apellidos": "Barneo López", "clase": "3r Primària"}, {"id": "ALU-0031", "nombre": "Shady", "apellidos": "Ben Hadj", "clase": "3r Primària"}, {"id": "ALU-0032", "nombre": "Leon", "apellidos": "Caamaño López", "clase": "3r Primària"}, {"id": "ALU-0033", "nombre": "Amir", "apellidos": "Choaibi", "clase": "3r Primària"}, {"id": "ALU-0034", "nombre": "Naila", "apellidos": "Choaibi", "clase": "3r Primària"}, {"id": "ALU-0035", "nombre": "Rida", "apellidos": "el Gori", "clase": "3r Primària"}, {"id": "ALU-0036", "nombre": "Ziyad", "apellidos": "el Idrissi", "clase": "3r Primària"}, {"id": "ALU-0037", "nombre": "Imran", "apellidos": "el Ouassdi", "clase": "3r Primària"}, {"id": "ALU-0038", "nombre": "Savelii", "apellidos": "Fedoronchuk", "clase": "3r Primària"}, {"id": "ALU-0039", "nombre": "Aya", "apellidos": "Hmitti", "clase": "3r Primària"}, {"id": "ALU-0040", "nombre": "Maysa", "apellidos": "Jamai", "clase": "3r Primària"}, {"id": "ALU-0041", "nombre": "Emilia", "apellidos": "Juárez García", "clase": "3r Primària"}, {"id": "ALU-0042", "nombre": "Anas", "apellidos": "Kassequessou Alilou", "clase": "3r Primària"}, {"id": "ALU-0043", "nombre": "Anastasiya", "apellidos": "Leus Buts", "clase": "3r Primària"}, {"id": "ALU-0044", "nombre": "Miguel", "apellidos": "Lima Gonçalves", "clase": "3r Primària"}, {"id": "ALU-0045", "nombre": "Kaïs", "apellidos": "Lopes", "clase": "3r Primària"}, {"id": "ALU-0046", "nombre": "Aitana", "apellidos": "Méndez Pino", "clase": "3r Primària"}, {"id": "ALU-0047", "nombre": "Maroua", "apellidos": "Ouaamar Maach", "clase": "3r Primària"}, {"id": "ALU-0048", "nombre": "Ayman", "apellidos": "Ouaich", "clase": "3r Primària"}, {"id": "ALU-0049", "nombre": "Mariona", "apellidos": "Rengipo Villarroel", "clase": "3r Primària"}, {"id": "ALU-0050", "nombre": "Fatima", "apellidos": "Sadique Ijaz", "clase": "3r Primària"}, {"id": "ALU-0051", "nombre": "Eider", "apellidos": "Szodorai Martín", "clase": "3r Primària"}, {"id": "ALU-0052", "nombre": "Omar", "apellidos": "Tayach", "clase": "3r Primària"}, {"id": "ALU-0053", "nombre": "Leo", "apellidos": "Aymami Balló", "clase": "2n Primària"}, {"id": "ALU-0054", "nombre": "Yousra", "apellidos": "Bakhnik", "clase": "2n Primària"}, {"id": "ALU-0055", "nombre": "Isona", "apellidos": "Borràs Morillas", "clase": "2n Primària"}, {"id": "ALU-0056", "nombre": "Andrei", "apellidos": "Cindea", "clase": "2n Primària"}, {"id": "ALU-0057", "nombre": "Mia", "apellidos": "de Oliveira Manco", "clase": "2n Primària"}, {"id": "ALU-0058", "nombre": "Lina", "apellidos": "Derkaoui Zerhouni", "clase": "2n Primària"}, {"id": "ALU-0059", "nombre": "Eric", "apellidos": "Doré Belmonte", "clase": "2n Primària"}, {"id": "ALU-0060", "nombre": "Mohamed", "apellidos": "Hachmi Mokhtari", "clase": "2n Primària"}, {"id": "ALU-0061", "nombre": "Dina", "apellidos": "El Messari", "clase": "2n Primària"}, {"id": "ALU-0062", "nombre": "Youssef", "apellidos": "El Yemlahi", "clase": "2n Primària"}, {"id": "ALU-0063", "nombre": "Adan", "apellidos": "Fernández Domínguez", "clase": "2n Primària"}, {"id": "ALU-0064", "nombre": "Luna Maria", "apellidos": "Gómez Rivero", "clase": "2n Primària"}, {"id": "ALU-0065", "nombre": "Islam", "apellidos": "Hamdi", "clase": "2n Primària"}, {"id": "ALU-0066", "nombre": "Safwan", "apellidos": "Hida", "clase": "2n Primària"}, {"id": "ALU-0067", "nombre": "Marwa", "apellidos": "Idrissi", "clase": "2n Primària"}, {"id": "ALU-0068", "nombre": "Isabella", "apellidos": "Olave Cifuentes", "clase": "2n Primària"}, {"id": "ALU-0069", "nombre": "Valentina", "apellidos": "Peña Miralles", "clase": "2n Primària"}, {"id": "ALU-0070", "nombre": "Izan", "apellidos": "Tena Marquez", "clase": "2n Primària"}, {"id": "ALU-0071", "nombre": "Denis Andrei", "apellidos": "Zgripcea", "clase": "2n Primària"}, {"id": "ALU-0072", "nombre": "Mosaab", "apellidos": "Zoubai", "clase": "2n Primària"}, {"id": "ALU-0073", "nombre": "Weiqi", "apellidos": "Zhu", "clase": "2n Primària"}, {"id": "ALU-0074", "nombre": "Mayar", "apellidos": "Aalaouel", "clase": "1r Primària"}, {"id": "ALU-0075", "nombre": "Aseel", "apellidos": "Akhdim Samadi", "clase": "1r Primària"}, {"id": "ALU-0076", "nombre": "Malak", "apellidos": "Aluat", "clase": "1r Primària"}, {"id": "ALU-0077", "nombre": "Mikael", "apellidos": "Ben-yahya Arabi", "clase": "1r Primària"}, {"id": "ALU-0078", "nombre": "Nour", "apellidos": "Boubnan", "clase": "1r Primària"}, {"id": "ALU-0079", "nombre": "Biel", "apellidos": "Carrillo Castro", "clase": "1r Primària"}, {"id": "ALU-0080", "nombre": "Ubay", "apellidos": "Dahrouch Samadi", "clase": "1r Primària"}, {"id": "ALU-0081", "nombre": "Aron Costin", "apellidos": "Dobre Dobre", "clase": "1r Primària"}, {"id": "ALU-0082", "nombre": "Ilaf", "apellidos": "el Ouassdi", "clase": "1r Primària"}, {"id": "ALU-0083", "nombre": "Malak", "apellidos": "Hmitti", "clase": "1r Primària"}, {"id": "ALU-0084", "nombre": "Mia", "apellidos": "León Castillo", "clase": "1r Primària"}, {"id": "ALU-0085", "nombre": "Amer", "apellidos": "Mojahid", "clase": "1r Primària"}, {"id": "ALU-0086", "nombre": "Laia", "apellidos": "Muñoz Gil", "clase": "1r Primària"}, {"id": "ALU-0087", "nombre": "Ayeza", "apellidos": "Sadique Ijaz", "clase": "1r Primària"}, {"id": "ALU-0088", "nombre": "Mahit", "apellidos": "Sheikh", "clase": "1r Primària"}, {"id": "ALU-0089", "nombre": "Salah Eddine", "apellidos": "Tahri", "clase": "1r Primària"}, {"id": "ALU-0090", "nombre": "Myriam", "apellidos": "Tayach", "clase": "1r Primària"}, {"id": "ALU-0091", "nombre": "Aris", "apellidos": "Valero Sastre", "clase": "1r Primària"}, {"id": "ALU-0092", "nombre": "Tasnim", "apellidos": "Acherkouk el Kati", "clase": "5è Primària"}, {"id": "ALU-0093", "nombre": "Adam", "apellidos": "Arhoune Ahassan", "clase": "5è Primària"}, {"id": "ALU-0094", "nombre": "Martina", "apellidos": "Barragan Llorell", "clase": "5è Primària"}, {"id": "ALU-0095", "nombre": "Lya", "apellidos": "Barrientos Corcoll", "clase": "5è Primària"}, {"id": "ALU-0096", "nombre": "Nayla", "apellidos": "Bozidi Acherkouk", "clase": "5è Primària"}, {"id": "ALU-0097", "nombre": "Khadija", "apellidos": "Chekkoufi", "clase": "5è Primària"}, {"id": "ALU-0098", "nombre": "Sami", "apellidos": "Daher Maadi", "clase": "5è Primària"}, {"id": "ALU-0099", "nombre": "Maimouna Pepita", "apellidos": "Djiba", "clase": "5è Primària"}, {"id": "ALU-0100", "nombre": "Isabella", "apellidos": "Duran d’Avanzo", "clase": "5è Primària"}, {"id": "ALU-0101", "nombre": "Mohamed Rida", "apellidos": "el Yemlahi", "clase": "5è Primària"}, {"id": "ALU-0102", "nombre": "Mia", "apellidos": "Fornas Fernández", "clase": "5è Primària"}, {"id": "ALU-0103", "nombre": "Angeline de la Caridad", "apellidos": "González Ulloa", "clase": "5è Primària"}, {"id": "ALU-0104", "nombre": "Pau", "apellidos": "Heras Domingo", "clase": "5è Primària"}, {"id": "ALU-0105", "nombre": "Johayna", "apellidos": "Hida", "clase": "5è Primària"}, {"id": "ALU-0106", "nombre": "Zoe", "apellidos": "Ijsselstein Brito", "clase": "5è Primària"}, {"id": "ALU-0107", "nombre": "Stella Jia Jia", "apellidos": "Li", "clase": "5è Primària"}, {"id": "ALU-0108", "nombre": "Mariia", "apellidos": "Malykhina", "clase": "5è Primària"}, {"id": "ALU-0109", "nombre": "Martina", "apellidos": "Meneses Barreto", "clase": "5è Primària"}, {"id": "ALU-0110", "nombre": "Júlio", "apellidos": "Monteiro Rizziolli", "clase": "5è Primària"}, {"id": "ALU-0111", "nombre": "Alessia Camila", "apellidos": "Polanco Torres", "clase": "5è Primària"}, {"id": "ALU-0112", "nombre": "Dídac", "apellidos": "Sastre Martín", "clase": "5è Primària"}, {"id": "ALU-0113", "nombre": "Lev", "apellidos": "Shabalin", "clase": "5è Primària"}, {"id": "ALU-0114", "nombre": "Hajar", "apellidos": "Tahri", "clase": "5è Primària"}, {"id": "ALU-0115", "nombre": "Tanith", "apellidos": "Vaz Noguera", "clase": "5è Primària"}, {"id": "ALU-0116", "nombre": "Naiara", "apellidos": "Viñales Martínez", "clase": "5è Primària"}, {"id": "ALU-0117", "nombre": "Raihana", "apellidos": "Zoubai", "clase": "5è Primària"}, {"id": "ALU-0118", "nombre": "Aaron", "apellidos": "Aalaouel", "clase": "I3 Infantil"}, {"id": "ALU-0119", "nombre": "Amina", "apellidos": "Aharrouchi el Ouarti", "clase": "I3 Infantil"}, {"id": "ALU-0120", "nombre": "Ishaq", "apellidos": "Ahmed", "clase": "I3 Infantil"}, {"id": "ALU-0121", "nombre": "Aleen", "apellidos": "Akhim Samadi", "clase": "I3 Infantil"}, {"id": "ALU-0122", "nombre": "Izia", "apellidos": "Baralo Cazeneuve", "clase": "I3 Infantil"}, {"id": "ALU-0123", "nombre": "Evelyn Maria", "apellidos": "Barbu", "clase": "I3 Infantil"}, {"id": "ALU-0124", "nombre": "Nil", "apellidos": "Barragan Llorell", "clase": "I3 Infantil"}, {"id": "ALU-0125", "nombre": "Othman", "apellidos": "Boubnan", "clase": "I3 Infantil"}, {"id": "ALU-0126", "nombre": "Omar", "apellidos": "el Maachy", "clase": "I3 Infantil"}, {"id": "ALU-0127", "nombre": "Rodayna", "apellidos": "el Messari", "clase": "I3 Infantil"}, {"id": "ALU-0128", "nombre": "Munir", "apellidos": "Imrani Khtira", "clase": "I3 Infantil"}, {"id": "ALU-0129", "nombre": "Adara", "apellidos": "Isidoro Storath", "clase": "I3 Infantil"}, {"id": "ALU-0130", "nombre": "Jonathan", "apellidos": "Olortegui de Morais", "clase": "I3 Infantil"}, {"id": "ALU-0131", "nombre": "Aina", "apellidos": "Pararols Fuentes", "clase": "I3 Infantil"}, {"id": "ALU-0132", "nombre": "Estel", "apellidos": "Portell Tura", "clase": "I3 Infantil"}, {"id": "ALU-0133", "nombre": "Harry", "apellidos": "Rodriguez Reyes", "clase": "I3 Infantil"}, {"id": "ALU-0134", "nombre": "Yanis", "apellidos": "Akhdim Samadi", "clase": "I4 Infantil"}, {"id": "ALU-0135", "nombre": "Kassandra Ioana", "apellidos": "Barbu", "clase": "I4 Infantil"}, {"id": "ALU-0136", "nombre": "Adam", "apellidos": "Chekkoufi", "clase": "I4 Infantil"}, {"id": "ALU-0137", "nombre": "Ivanis", "apellidos": "Creagh Lafos", "clase": "I4 Infantil"}, {"id": "ALU-0138", "nombre": "Adam", "apellidos": "Dahrouch Samadi", "clase": "I4 Infantil"}, {"id": "ALU-0139", "nombre": "Absa", "apellidos": "Djiba", "clase": "I4 Infantil"}, {"id": "ALU-0140", "nombre": "Jinan", "apellidos": "El Kati", "clase": "I4 Infantil"}, {"id": "ALU-0141", "nombre": "Sofia", "apellidos": "El Onsri Laari", "clase": "I4 Infantil"}, {"id": "ALU-0142", "nombre": "Lina", "apellidos": "El Yemlahi", "clase": "I4 Infantil"}, {"id": "ALU-0143", "nombre": "Leia", "apellidos": "Flores Kandeh", "clase": "I4 Infantil"}, {"id": "ALU-0144", "nombre": "Bissan", "apellidos": "Kabadi El Briak", "clase": "I4 Infantil"}, {"id": "ALU-0145", "nombre": "Yanis Khatira", "apellidos": "Boujnah", "clase": "I4 Infantil"}, {"id": "ALU-0146", "nombre": "Ayax", "apellidos": "Martiñan Pozo", "clase": "I4 Infantil"}, {"id": "ALU-0147", "nombre": "Islam", "apellidos": "Ouhrni", "clase": "I4 Infantil"}, {"id": "ALU-0148", "nombre": "Sanad", "apellidos": "Perez El Abasi", "clase": "I4 Infantil"}, {"id": "ALU-0149", "nombre": "Eira", "apellidos": "Prieto Cervera", "clase": "I4 Infantil"}, {"id": "ALU-0150", "nombre": "Dara Ximena", "apellidos": "Quinde Zeron", "clase": "I4 Infantil"}, {"id": "ALU-0151", "nombre": "Joina", "apellidos": "Serrano Riera", "clase": "I4 Infantil"}, {"id": "ALU-0152", "nombre": "Antonio", "apellidos": "Bohanerger Rufián Flores", "clase": "I4 Infantil"}, {"id": "ALU-0153", "nombre": "Aylan", "apellidos": "Zizaoui", "clase": "I4 Infantil"}, {"id": "ALU-0154", "nombre": "Jana", "apellidos": "Aharrouchi", "clase": "6è Primària"}, {"id": "ALU-0155", "nombre": "Leire", "apellidos": "Asensi Pérez", "clase": "6è Primària"}, {"id": "ALU-0156", "nombre": "Manuel", "apellidos": "Confianza Haba", "clase": "6è Primària"}, {"id": "ALU-0157", "nombre": "Mòriah", "apellidos": "Coromina Ricart", "clase": "6è Primària"}, {"id": "ALU-0158", "nombre": "Ahmed", "apellidos": "Daoudi", "clase": "6è Primària"}, {"id": "ALU-0159", "nombre": "Sebastian", "apellidos": "Durac", "clase": "6è Primària"}, {"id": "ALU-0160", "nombre": "Khadija", "apellidos": "el Alami", "clase": "6è Primària"}, {"id": "ALU-0161", "nombre": "Amjad", "apellidos": "el Kanfoudi", "clase": "6è Primària"}, {"id": "ALU-0162", "nombre": "Afnan", "apellidos": "el Kati", "clase": "6è Primària"}, {"id": "ALU-0163", "nombre": "Amira", "apellidos": "el Maachy", "clase": "6è Primària"}, {"id": "ALU-0164", "nombre": "Marwa", "apellidos": "el Masshadi", "clase": "6è Primària"}, {"id": "ALU-0165", "nombre": "Mohamed Amir", "apellidos": "el Ouassdi", "clase": "6è Primària"}, {"id": "ALU-0166", "nombre": "Ismael", "apellidos": "Idrissi", "clase": "6è Primària"}, {"id": "ALU-0167", "nombre": "Agata", "apellidos": "Kozhinova", "clase": "6è Primària"}, {"id": "ALU-0168", "nombre": "Carla", "apellidos": "Moreschi", "clase": "6è Primària"}, {"id": "ALU-0169", "nombre": "Akyra Katterinne", "apellidos": "Muñoz Gutiérrez", "clase": "6è Primària"}, {"id": "ALU-0170", "nombre": "Mohamed Chafik", "apellidos": "Ouaamar Maach", "clase": "6è Primària"}, {"id": "ALU-0171", "nombre": "Duna", "apellidos": "Pararols Fuentes", "clase": "6è Primària"}, {"id": "ALU-0172", "nombre": "Aroa", "apellidos": "Quiñoy Cubero", "clase": "6è Primària"}, {"id": "ALU-0173", "nombre": "Giacomo Michele", "apellidos": "Robles Leopardi", "clase": "6è Primària"}, {"id": "ALU-0174", "nombre": "Hervys Moisés", "apellidos": "Romero González", "clase": "6è Primària"}, {"id": "ALU-0175", "nombre": "Hunor", "apellidos": "Sándor Szodorai Martín", "clase": "6è Primària"}, {"id": "ALU-0176", "nombre": "Sabrina", "apellidos": "Tahiri", "clase": "6è Primària"}, {"id": "ALU-0177", "nombre": "Biel", "apellidos": "Turró Danés", "clase": "6è Primària"}, {"id": "ALU-0178", "nombre": "Helen", "apellidos": "Vaz Godoy", "clase": "6è Primària"}, {"id": "ALU-0179", "nombre": "Juan", "apellidos": "A. Wilson Tunjano", "clase": "6è Primària"}, {"id": "ALU-0180", "nombre": "Weichen", "apellidos": "Zhu", "clase": "6è Primària"}, {"id": "ALU-0181", "nombre": "Aina", "apellidos": "Acherkouk", "clase": "I5 Infantil"}, {"id": "ALU-0182", "nombre": "Umayra", "apellidos": "Ahmed", "clase": "I5 Infantil"}, {"id": "ALU-0183", "nombre": "Ayzal", "apellidos": "Arfat", "clase": "I5 Infantil"}, {"id": "ALU-0184", "nombre": "Ryana", "apellidos": "Ben-Yahya", "clase": "I5 Infantil"}, {"id": "ALU-0185", "nombre": "Alessandra Sophia", "apellidos": "Chacon", "clase": "I5 Infantil"}, {"id": "ALU-0186", "nombre": "Esraa", "apellidos": "Chekkoufi", "clase": "I5 Infantil"}, {"id": "ALU-0187", "nombre": "Celia", "apellidos": "El Farissi", "clase": "I5 Infantil"}, {"id": "ALU-0188", "nombre": "Nouran", "apellidos": "El Idrissi", "clase": "I5 Infantil"}, {"id": "ALU-0189", "nombre": "Mohamed", "apellidos": "Jad Errahmouni", "clase": "I5 Infantil"}, {"id": "ALU-0190", "nombre": "León", "apellidos": "González", "clase": "I5 Infantil"}, {"id": "ALU-0191", "nombre": "Ilyas", "apellidos": "Hamdi", "clase": "I5 Infantil"}, {"id": "ALU-0192", "nombre": "Lía", "apellidos": "Heredia", "clase": "I5 Infantil"}, {"id": "ALU-0193", "nombre": "Rital", "apellidos": "Maarfi", "clase": "I5 Infantil"}, {"id": "ALU-0194", "nombre": "Stela Alexandra", "apellidos": "Machioiu", "clase": "I5 Infantil"}, {"id": "ALU-0195", "nombre": "Ilias", "apellidos": "Ourhni", "clase": "I5 Infantil"}, {"id": "ALU-0196", "nombre": "Giuliana Fernanda", "apellidos": "Pucciarelli", "clase": "I5 Infantil"}, {"id": "ALU-0197", "nombre": "Alexandru Bogdan", "apellidos": "Zgripcea", "clase": "I5 Infantil"}, {"id": "ALU-0198", "nombre": "Gabriel", "apellidos": "Tyminski Jorge", "clase": "I5 Infantil"}];
+
+const todayStr = () => new Date().toISOString().slice(0,10);
+const euro = n => (Number(n)||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+const UMBRAL_AMARILLO = 81;
+const UMBRAL_ROJO = 101;
+function semaforoColor(total){
+  if(total >= UMBRAL_ROJO) return 'rojo';
+  if(total >= UMBRAL_AMARILLO) return 'amarillo';
+  return 'verde';
+}
+
+/* ---------------- Enrutado por URL (?rol=...&clase=...) ---------------- */
+const params = new URLSearchParams(location.search);
+const rol = params.get('rol');
+const claseParam = params.get('clase');
+
+function showSection(id, title, subtitle){
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin'].forEach(v=>{
+    $('#'+v).classList.toggle('hidden', v!==id);
+  });
+  $('#pageTitle').textContent = title;
+  $('#pageSubtitle').textContent = subtitle || '';
+}
+
+if(rol==='profesor'){
+  if(claseParam){ showSection('view-profesor','🍽️ Comedor — Profesorado', claseParam); }
+  else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
+} else if(rol==='monitora'){
+  showSection('view-monitora','🍽️ Comedor — Monitora','Recuento y confirmación');
+} else if(rol==='admin'){
+  showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
+} else {
+  showSection('view-none','🍽️ Comedor AFA');
+}
+
+/* ---------------- Estado global en memoria (reflejo de Firebase) ---------------- */
+let classesList = [...CLASSES_DEFAULT];
+let students = {};
+let precios = { esporadico: 0, medioMes: 0, mesEntero: 0 };
+let attendanceCache = {};
+let activeDates = new Set();
+let menuWeekData = {};
+
+onValue(ref(db,'config/classes'), snap=>{
+  classesList = snap.exists() ? Object.values(snap.val()) : [...CLASSES_DEFAULT];
+  if(rol==='admin'){
+    renderAdminClassFilter();
+    $('#classesEditor').value = classesList.join('\n');
+    renderEnlaces();
+  }
+});
+onValue(ref(db,'config/precios'), snap=>{
+  if(snap.exists()) precios = snap.val();
+  if(rol==='admin'){
+    $('#precioEsporadico').value = precios.esporadico || 0;
+    $('#precioMedioMes').value = precios.medioMes || 0;
+    $('#precioMesEntero').value = precios.mesEntero || 0;
+    renderAdminDayStats();
+    renderMonthStats();
+  }
+});
+onValue(ref(db,'students'), snap=>{
+  students = snap.val() || {};
+  if(rol==='profesor' && claseParam) renderProfesorList();
+  if(rol==='monitora') renderMonitoraList();
+  if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
+});
+
+function listenAttendanceForDate(date){
+  onValue(ref(db, 'attendance/'+date), snap=>{
+    attendanceCache[date] = snap.val() || {};
+    if(rol==='profesor' && claseParam) { renderProfesorList(); renderProfesorMenu(); }
+    if(rol==='monitora') renderMonitoraList();
+    if(rol==='admin'){ renderAdminDayStats(); }
+  });
+}
+function ensureListening(date){
+  if(activeDates.has(date)) return;
+  activeDates.add(date);
+  listenAttendanceForDate(date);
+}
+
+/* =========================================================================
+   MENÚ SEMANAL
+   ======================================================================== */
+const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+function mondayOf(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day);
+  return d.toISOString().slice(0,10);
+}
+function listenMenu(week){
+  onValue(ref(db,'menu/'+week), snap=>{
+    menuWeekData=snap.exists()?snap.val():{};
+    if(rol==='admin') renderMenuEditor();
+    if(rol==='monitora') renderMonitoraMenu();
+    if(rol==='profesor' && claseParam) renderProfesorMenu();
+  });
+}
+function renderProfesorMenu(){ const target=$('#profesorMenu'); if(target) renderMenuReadOnly(target); }
+function renderMenuReadOnly(target){
+  const week=$('#menuWeek')?.value || mondayOf(todayStr());
+  const data=menuWeekData||{};
+  target.innerHTML=DAY_NAMES.map((d,i)=>{
+    const key=String(i+1); const v=data[key]||{};
+    return `<div class="menu-day"><div class="menu-date">${d}</div><div>${v.plato||'<span class="small">Sin definir</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;
+  }).join('');
+}
+function renderMenuEditor(){
+  if(rol!=='admin') return;
+  const target=$('#menuEditor'); if(!target) return;
+  target.innerHTML=DAY_NAMES.map((d,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${d}</div><div><input class="menu-plato" data-day="${i+1}" placeholder="Primer plato / segundo / postre" value="${(v.plato||'').replace(/"/g,'&quot;')}"><input class="menu-notas" data-day="${i+1}" placeholder="Notas, alérgenos, cambios…" value="${(v.notas||'').replace(/"/g,'&quot;')}" style="margin-top:.3rem"></div></div>`;}).join('');
+}
+function renderMonitoraMenu(){
+  const target=$('#monitoraMenu'); if(!target) return;
+  target.innerHTML=DAY_NAMES.map((d,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${d}</div><div>${v.plato||'<span class="small">Sin definir</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;}).join('');
+}
+function renderMonitoraAllergies(){
+  if(rol!=='monitora') return;
+  const date=$('#monitoraDate')?.value||todayStr(); const dayAtt=attendanceCache[date]||{}; const out=[];
+  for(const classId of Object.keys(students)) for(const [id,s] of Object.entries(students[classId]||{})){
+    const a=(dayAtt[classId]||{})[id]; if(a?.marcaProfesor && s.alergias) out.push(`<div><strong>${s.nombre} ${s.apellidos||''}</strong> <span class="small">(${classId})</span> — ⚠ ${s.alergias}</div>`);
+  }
+  const box=$('#monitoraAllergies'); box.innerHTML=out.length?`<div class="allergy-box"><strong>⚠ Alergias/restricciones de hoy</strong>${out.join('')}</div>`:'';
+}
+
+if(rol==='admin'){
+  $('#menuWeek').value=mondayOf(todayStr());
+  listenMenu($('#menuWeek').value);
+  $('#menuWeek').addEventListener('change',()=>listenMenu($('#menuWeek').value));
+  $('#btnGuardarMenu').addEventListener('click',async()=>{
+    const data={};
+    $$('#menuEditor .menu-plato').forEach(el=>{const day=el.dataset.day; const notas=$(`#menuEditor .menu-notas[data-day="${day}"]`)?.value||''; data[day]={plato:el.value.trim(),notas:notas.trim()};});
+    await set(ref(db,'menu/'+$('#menuWeek').value),data);
+    $('#menuStatus').textContent='Menú guardado ✓'; setTimeout(()=>$('#menuStatus').textContent='',1800);
+  });
+}
+if(rol==='monitora'){
+  listenMenu(mondayOf(todayStr()));
+}
+
+/* =========================================================================
+   VISTA PROFESOR (bloqueada a su clase vía ?clase=)
+   ========================================================================= */
+if(rol==='profesor' && claseParam){
+  $('#profesorDate').value = todayStr();
+  ensureListening(todayStr());
+  listenMenu(mondayOf(todayStr()));
+}
+
+
+function renderProfesorList(){
+  const classId = claseParam;
+  const date = todayStr();
+  const list = $('#profesorList');
+  const classStudents = students[classId] || {};
+  const att = (attendanceCache[date]||{})[classId] || {};
+  const ids = Object.keys(classStudents);
+  if(ids.length===0){ list.innerHTML = '<li class="small">No hay alumnos cargados en esta clase todavía.</li>'; $('#profesorResumen').textContent=''; return; }
+  let quedan = 0;
+  list.innerHTML = ids.map(id=>{
+    const s = classStudents[id];
+    const checked = !!(att[id] && att[id].marcaProfesor);
+    if(checked) quedan++;
+    return `<li>
+      <span><span class="name">${s.nombre} ${s.apellidos||''}</span>
+        ${s.alergias ? `<span class="tag alergia">⚠ ${s.alergias}</span>`:''}
+        ${s.becado ? `<span class="tag becado">Becado</span>`:''}
+      </span>
+      <label class="toggle"><input type="checkbox" data-id="${id}" ${checked?'checked':''}><span class="slider"></span></label>
+    </li>`;
+  }).join('');
+  $('#profesorResumen').textContent = `${quedan} de ${ids.length} se quedan hoy`;
+  $$('#profesorList input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      const id = cb.dataset.id;
+      update(ref(db, `attendance/${date}/${classId}/${id}`), {
+        marcaProfesor: cb.checked, horaMarcaProfesor: new Date().toISOString()
+      });
+    });
+  });
+}
+
+/* =========================================================================
+   VISTA MONITORA
+   ========================================================================= */
+if(rol==='monitora'){
+  $('#monitoraDate').value = todayStr();
+  ensureListening(todayStr());
+  $('#monitoraDate').addEventListener('change', ()=>{ ensureListening($('#monitoraDate').value); renderMonitoraList(); });
+  onValue(ref(db,'monitors/'+todayStr()), snap=>{
+    $('#monitorsCount').value = snap.exists() ? snap.val() : '';
+  });
+  $('#monitorsCount').addEventListener('change', ()=>{
+    set(ref(db,'monitors/'+todayStr()), Number($('#monitorsCount').value)||0);
+  });
+}
+
+function renderMonitoraSemaforo(){
+  if(rol!=='monitora') return;
+  const date = $('#monitoraDate').value || todayStr();
+  const st = computeDayStats(date);
+  const color = semaforoColor(st.marcados);
+  const box = $('#monitoraSemaforoBox');
+  box.className = 'semaforo '+color;
+  $('#monitoraSemaforoTexto').textContent = color==='verde' ? 'Todo bajo control'
+    : color==='amarillo' ? 'Previsión alta de comensales' : 'Previsión muy alta, valora pedir refuerzo';
+  $('#monitoraSemaforoDetalle').textContent = `${st.marcados} niños marcados hoy por el profesorado`;
+  $('#monitoraBanner').innerHTML = color==='verde' ? '' :
+    `<div class="banner ${color}">⚠ Semáforo en ${color.toUpperCase()}: revisa si necesitas activar el protocolo.</div>`;
+  $('#btnProtocolo').disabled = (color==='verde');
+}
+
+if(rol==='monitora'){
+  $('#btnProtocolo').addEventListener('click', async ()=>{
+    const date = $('#monitoraDate').value || todayStr();
+    const st = computeDayStats(date);
+    const color = semaforoColor(st.marcados);
+    if(!confirm(`Se enviará un aviso por email a la AFA y a la escuela indicando ${st.marcados} niños marcados (nivel ${color.toUpperCase()}). ¿Confirmas?`)) return;
+    $('#protocoloStatus').textContent = 'Enviando...';
+    try{
+      await enviarProtocolo(date, st.marcados, color);
+      $('#protocoloStatus').textContent = 'Aviso enviado ✓';
+    }catch(e){
+      $('#protocoloStatus').textContent = 'Error: ' + e.message;
+    }
+    setTimeout(()=>$('#protocoloStatus').textContent='',4000);
+  });
+}
+
+function renderMonitoraList(){
+  const date = $('#monitoraDate').value || todayStr();
+  renderMonitoraSemaforo();
+  renderMonitoraAllergies();
+  const dayAtt = attendanceCache[date] || {};
+  const rows = [];
+  let marcados=0, confirmados=0, incidencias=0, pendientes=0;
+  for(const classId of Object.keys(students)){
+    const classStudents = students[classId];
+    const classAtt = dayAtt[classId] || {};
+    for(const id of Object.keys(classStudents)){
+      const a = classAtt[id];
+      if(a && a.marcaProfesor){
+        marcados++;
+        const s = classStudents[id];
+        const estado = a.confirmadoMonitora === true ? 'confirmado'
+          : a.confirmadoMonitora === false ? 'incidencia' : 'pendiente';
+        if(estado==='confirmado') confirmados++;
+        else if(estado==='incidencia') incidencias++;
+        else pendientes++;
+        rows.push({classId,id,s,a,estado});
+      }
+    }
+  }
+  $('#monitoraStats').innerHTML = `
+    <div class="stat"><div class="n">${marcados}</div><div class="l">Marcados por profes</div></div>
+    <div class="stat"><div class="n">${pendientes}</div><div class="l">Por revisar</div></div>
+    <div class="stat"><div class="n">${confirmados}</div><div class="l">Confirmados presentes</div></div>
+    <div class="stat"><div class="n">${incidencias}</div><div class="l">Incidencias (no vino)</div></div>`;
+
+  $('#monitoraList').innerHTML = rows.map(r=>`
+    <li>
+      <span><span class="name">${r.s.nombre} ${r.s.apellidos||''}</span>
+        <span class="small">(${r.classId})</span>
+        ${r.s.alergias ? `<span class="tag alergia">⚠ ${r.s.alergias}</span>`:''}
+        ${r.estado==='confirmado' ? `<span class="tag becado" style="background:#DCEEE2;color:#204C37;">Ha comido</span>`:''}
+        ${r.estado==='incidencia' ? `<span class="tag alergia">Incidencia${r.a.incidenciaNota ? ': '+r.a.incidenciaNota : ''}</span>`:''}
+      </span>
+      <span class="row" style="gap:.3rem;">
+        <button class="secondary btn-confirma" data-class="${r.classId}" data-id="${r.id}"
+          style="${r.estado==='confirmado' ? 'background:var(--forest);color:#fff;' : ''}">✓ Ha comido</button>
+        <button class="secondary btn-incidencia" data-class="${r.classId}" data-id="${r.id}"
+          style="${r.estado==='incidencia' ? 'background:var(--alert);color:#fff;' : ''}">✕ Incidencia</button>
+      </span>
+    </li>`).join('') || '<li class="small">Nadie marcado todavía.</li>';
+
+  $$('#monitoraList .btn-confirma').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      update(ref(db, `attendance/${date}/${btn.dataset.class}/${btn.dataset.id}`), {
+        confirmadoMonitora: true, incidenciaNota: '', horaConfirmMonitora: new Date().toISOString()
+      });
+    });
+  });
+  $$('#monitoraList .btn-incidencia').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const nota = prompt('Motivo de la incidencia (opcional), ej. "avisó la familia, no viene hoy":', '') || '';
+      update(ref(db, `attendance/${date}/${btn.dataset.class}/${btn.dataset.id}`), {
+        confirmadoMonitora: false, incidenciaNota: nota, horaConfirmMonitora: new Date().toISOString()
+      });
+    });
+  });
+}
+
+if(rol==='monitora'){
+  $('#btnAddExtra').addEventListener('click', async ()=>{
+    const nombre = prompt('Nombre del niño/a a añadir:');
+    if(!nombre) return;
+    const clase = prompt('Clase:', classesList[0]) || classesList[0];
+    const date = $('#monitoraDate').value || todayStr();
+    const newRef = push(ref(db, `students/${clase}`));
+    await set(newRef, { nombre, clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
+    await update(ref(db, `attendance/${date}/${clase}/${newRef.key}`), { marcaProfesor:true, confirmadoMonitora:true, horaMarcaProfesor:new Date().toISOString() });
+  });
+}
+
+/* =========================================================================
+   VISTA ADMIN
+   ========================================================================= */
+if(rol==='admin'){
+  $('#adminDate').value = todayStr();
+  ensureListening(todayStr());
+  $('#adminDate').addEventListener('change', ()=>{ ensureListening($('#adminDate').value); renderAdminDayStats(); });
+  $('#adminMonth').value = todayStr().slice(0,7);
+  $('#adminMonth').addEventListener('change', renderMonthStats);
+  renderMonthStats();
+}
+
+function renderEnlaces(){
+  const base = location.origin + location.pathname;
+  const rows = classesList.map(c=>{
+    const url = `${base}?rol=profesor&clase=${encodeURIComponent(c)}`;
+    return `<div class="copyrow"><span>${c}</span>
+      <button class="secondary" data-url="${url}">Copiar enlace</button></div>`;
+  });
+  rows.push(`<div class="copyrow"><span><strong>Monitora</strong></span>
+    <button class="secondary" data-url="${base}?rol=monitora">Copiar enlace</button></div>`);
+  $('#enlacesList').innerHTML = rows.join('');
+  $$('#enlacesList button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      navigator.clipboard.writeText(btn.dataset.url).then(()=>{
+        btn.textContent='Copiado ✓'; setTimeout(()=>btn.textContent='Copiar enlace',1200);
+      });
+    });
+  });
+}
+
+function renderAdminClassFilter(){
+  const opts = classesList.map(c=>`<option value="${c}">${c}</option>`).join('');
+  $('#adminClassFilter').innerHTML = `<option value="">— Todas las clases —</option>` + opts;
+}
+if(rol==='admin') $('#adminClassFilter').addEventListener('change', renderAdminStudentsTable);
+
+/* ---------------- Sincronización con matrícula oficial ---------------- */
+function normName(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
+async function syncOfficialRoster(){
+  const snap=await get(ref(db,'students')); const current=snap.exists()?snap.val():{};
+  const byName={};
+  for(const [clase,group] of Object.entries(current)) for(const [oldId,s] of Object.entries(group||{})){
+    const key=normName((s.nombre||'')+' '+(s.apellidos||'')); if(key && !byName[key]) byName[key]={clase,oldId,s};
+  }
+  const attendanceSnap=await get(ref(db,'attendance'));
+  const attendance=attendanceSnap.exists()?attendanceSnap.val():{};
+  const writes={}; const removals=[]; const usedOld=new Set();
+  const attendanceMoves={};
+  for(const o of OFFICIAL_STUDENTS){
+    const target=`students/${o.clase}/${o.id}`;
+    const found=current[o.clase]?.[o.id] ? {clase:o.clase,oldId:o.id,s:current[o.clase][o.id]} : byName[normName(o.nombre+' '+o.apellidos)];
+    const existing=found?.s||{};
+    writes[target]={...existing,...o,activo:existing.activo!==false,origen:'matricula-2026-2027'};
+    if(found && !(found.clase===o.clase && found.oldId===o.id)){
+      removals.push(`students/${found.clase}/${found.oldId}`); usedOld.add(found.clase+'/'+found.oldId);
+      for(const [date,byClass] of Object.entries(attendance)) {
+        const oldAtt=byClass?.[found.clase]?.[found.oldId];
+        if(oldAtt) attendanceMoves[`attendance/${date}/${o.clase}/${o.id}`]=oldAtt;
+        if(oldAtt) attendanceMoves[`attendance/${date}/${found.clase}/${found.oldId}`]=null;
+      }
+    }
+  }
+  // Mantener cualquier alumno adicional no presente en el padrón oficial; se reporta pero no se borra.
+  const extras=[]; for(const [clase,group] of Object.entries(current)) for(const [id,s] of Object.entries(group||{})) if(!usedOld.has(clase+'/'+id) && !OFFICIAL_STUDENTS.some(o=>o.clase===clase&&o.id===id)) extras.push(`${s.nombre||''} ${s.apellidos||''}`.trim());
+  const payload={...writes,...attendanceMoves}; removals.forEach(p=>payload[p]=null); payload['config/classes']=CLASSES_DEFAULT;
+  await update(ref(db),payload);
+  $('#syncOfficialStatus').textContent=`Sincronizados ${OFFICIAL_STUDENTS.length}. Extras conservados: ${extras.length}.`;
+}
+if(rol==='admin') $('#btnSyncOfficial').addEventListener('click',async()=>{
+  if(!confirm('Se sincronizarán los 198 alumnos y las 9 clases oficiales. Se conservarán alergias, pagos y becas existentes cuando se encuentre el mismo alumno. ¿Continuar?')) return;
+  $('#syncOfficialStatus').textContent='Sincronizando…';
+  try{await syncOfficialRoster();}catch(e){$('#syncOfficialStatus').textContent='Error: '+e.message;}
+});
+
+/* ---------------- Import Excel/CSV ---------------- */
+function detectCol(headerRow, keywords){
+  return headerRow.findIndex(h => keywords.some(k => String(h).toLowerCase().includes(k)));
+}
+async function importRows(rows){
+  if(rows.length < 2){ $('#importStatus').textContent = 'No se encontraron filas de datos.'; return; }
+  const header = rows[0];
+  const idxNombre = detectCol(header, ['nombre','alumno','niño']);
+  const idxClase = detectCol(header, ['clase','curso']);
+  const idxAlergias = detectCol(header, ['alerg','restric']);
+  const idxPago = detectCol(header, ['pago','tipo']);
+  const idxBecado = detectCol(header, ['becad','beca']);
+  const idxBecaImporte = detectCol(header, ['importe','descuento']);
+  let count=0;
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i];
+    if(!r || !r[idxNombre]) continue;
+    const clase = String(idxClase>=0 ? r[idxClase] : classesList[0]).trim() || classesList[0];
+    const becadoRaw = idxBecado>=0 ? String(r[idxBecado]).toLowerCase() : '';
+    const becado = ['si','sí','yes','true','1','x'].includes(becadoRaw.trim());
+    const data = {
+      nombre: String(r[idxNombre]).trim(), clase,
+      alergias: idxAlergias>=0 ? String(r[idxAlergias]||'').trim() : '',
+      tipoPago: idxPago>=0 ? String(r[idxPago]).toLowerCase().trim() || 'mensual' : 'mensual',
+      becado, becaImporte: becado && idxBecaImporte>=0 ? Number(r[idxBecaImporte])||0 : 0,
+      activo: true
+    };
+    if(!classesList.includes(clase)) classesList.push(clase);
+    const newRef = push(ref(db, `students/${clase}`));
+    await set(newRef, data);
+    count++;
+  }
+  await set(ref(db,'config/classes'), classesList);
+  $('#importStatus').textContent = `Importados ${count} alumnos.`;
+}
+if(rol==='admin'){
+  $('#fileImport').addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    $('#importStatus').textContent = 'Leyendo archivo...';
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+    await importRows(rows);
+  });
+  $('#btnPasteCSV').addEventListener('click', ()=>{
+    $('#csvPasteArea').classList.toggle('hidden');
+    $('#btnImportPaste').classList.toggle('hidden');
+  });
+  $('#btnImportPaste').addEventListener('click', async ()=>{
+    const text = $('#csvPasteArea').value.trim(); if(!text) return;
+    const rows = text.split('\n').map(line=>line.split(','));
+    await importRows(rows);
+  });
+  $('#btnGuardarPrecios').addEventListener('click', async ()=>{
+    const nuevo = {
+      esporadico: Number($('#precioEsporadico').value)||0,
+      medioMes: Number($('#precioMedioMes').value)||0,
+      mesEntero: Number($('#precioMesEntero').value)||0
+    };
+    await set(ref(db,'config/precios'), nuevo);
+    $('#preciosStatus').textContent = 'Guardado ✓';
+    setTimeout(()=>$('#preciosStatus').textContent='',1500);
+  });
+  $('#btnGuardarClases').addEventListener('click', async ()=>{
+    const lines = $('#classesEditor').value.split('\n').map(l=>l.trim()).filter(Boolean);
+    await set(ref(db,'config/classes'), lines);
+  });
+}
+
+function renderAdminStudentsTable(){
+  if(rol!=='admin') return;
+  const filter = $('#adminClassFilter').value;
+  const tbody = document.querySelector('#adminStudentsTable tbody');
+  const rowsHtml = [];
+  for(const classId of Object.keys(students)){
+    if(filter && classId!==filter) continue;
+    for(const [id,s] of Object.entries(students[classId])){
+      rowsHtml.push(`<tr data-class="${classId}" data-id="${id}">
+        <td>${s.nombre}<div class="small">${classId}</div></td>
+        <td><div class="small">${s.id||id}</div><input class="f-alergias" value="${s.alergias||''}"></td>
+        <td><select class="f-pago">
+            <option value="mensual" ${s.tipoPago==='mensual'?'selected':''}>Mensual</option>
+            <option value="quincena" ${s.tipoPago==='quincena'?'selected':''}>Quincena</option>
+            <option value="esporadico" ${s.tipoPago==='esporadico'?'selected':''}>Esporádico</option>
+          </select></td>
+        <td style="text-align:center;"><input type="checkbox" class="f-becado" ${s.becado?'checked':''}></td>
+        <td><input type="number" class="f-becaImporte" value="${s.becaImporte||0}" style="width:80px;"></td>
+        <td><button class="secondary f-guardar">Guardar</button> <button class="danger f-borrar">✕</button></td>
+      </tr>`);
+    }
+  }
+  tbody.innerHTML = rowsHtml.join('') || `<tr><td colspan="6" class="small">Sin alumnos. Importa una lista arriba.</td></tr>`;
+  $$('#adminStudentsTable .f-guardar').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const tr = btn.closest('tr');
+      await update(ref(db, `students/${tr.dataset.class}/${tr.dataset.id}`), {
+        alergias: tr.querySelector('.f-alergias').value,
+        tipoPago: tr.querySelector('.f-pago').value,
+        becado: tr.querySelector('.f-becado').checked,
+        becaImporte: Number(tr.querySelector('.f-becaImporte').value)||0
+      });
+      btn.textContent = '✓'; setTimeout(()=>btn.textContent='Guardar',1200);
+    });
+  });
+  $$('#adminStudentsTable .f-borrar').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const tr = btn.closest('tr');
+      if(!confirm('¿Borrar a este alumno de la lista?')) return;
+      await remove(ref(db, `students/${tr.dataset.class}/${tr.dataset.id}`));
+    });
+  });
+}
+
+/* ---------------- Panel del día + semáforo + alarma ---------------- */
+let chartDay=null;
+function computeDayStats(date){
+  const dayAtt = attendanceCache[date] || {};
+  let marcados=0, confirmados=0, ingresoEsporadicosBecados=0, ingresoEsporadicosNoBecados=0;
+  const porClase = {};
+  for(const classId of Object.keys(students)){
+    let m=0,c=0;
+    const classAtt = dayAtt[classId] || {};
+    for(const [id,s] of Object.entries(students[classId])){
+      const a = classAtt[id];
+      if(a && a.marcaProfesor){
+        m++; marcados++;
+        if(a.confirmadoMonitora===true){
+          c++; confirmados++;
+          if(s.tipoPago==='esporadico'){
+            const precio = Math.max(0, (precios.esporadico||0) - (s.becado?(s.becaImporte||0):0));
+            if(s.becado) ingresoEsporadicosBecados += precio; else ingresoEsporadicosNoBecados += precio;
+          }
+        }
+      }
+    }
+    porClase[classId] = {marcados:m, confirmados:c};
+  }
+  return {marcados,confirmados,ingresoEsporadicosBecados,ingresoEsporadicosNoBecados,porClase};
+}
+
+// El protocolo ya NO se dispara automáticamente: lo activa Flor (monitora)
+// con un botón cuando, sobre las 9:30h, revisa el semáforo tras el pase de
+// lista del profesorado. Esto evita avisos duplicados o falsos y le deja a
+// ella la decisión de pedir refuerzo.
+async function enviarProtocolo(date, total, color){
+  await set(ref(db, `alarms/${date}`), {
+    level: color, total, activadoPor: 'monitora', sentAt: new Date().toISOString()
+  });
+  if(window.emailjs && window.EMAILJS_CONFIG?.publicKey && window.EMAILJS_CONFIG.publicKey!=="TU_PUBLIC_KEY"){
+    await emailjs.send(window.EMAILJS_CONFIG.serviceId, window.EMAILJS_CONFIG.templateId, {
+      date, total, color: color.toUpperCase()
+    });
+  } else {
+    throw new Error('EmailJS no está configurado todavía (EMAILJS_CONFIG).');
+  }
+}
+
+function renderAdminDayStats(){
+  if(rol!=='admin') return;
+  const date = $('#adminDate').value || todayStr();
+  const st = computeDayStats(date);
+  const color = semaforoColor(st.marcados);
+  const box = $('#semaforoBox');
+  box.className = 'semaforo '+color;
+  $('#semaforoTexto').textContent = color==='verde' ? 'Todo bajo control'
+    : color==='amarillo' ? 'Atención: previsión alta de comensales' : 'Alerta: previsión muy alta, considerar monitor extra';
+  $('#semaforoDetalle').textContent = `${st.marcados} niños marcados hoy por el profesorado`;
+  $('#adminBanner').innerHTML = color==='verde' ? '' :
+    `<div class="banner ${color}">⚠ Semáforo en ${color.toUpperCase()}: ${st.marcados} marcados. Flor (monitora) puede activar el protocolo de refuerzo desde su vista.</div>`;
+
+  $('#adminDayStats').innerHTML = `
+    <div class="stat"><div class="n">${st.marcados}</div><div class="l">Marcados</div></div>
+    <div class="stat"><div class="n">${st.confirmados}</div><div class="l">Confirmados</div></div>
+    <div class="stat"><div class="n">${euro(st.ingresoEsporadicosNoBecados)}</div><div class="l">Ingreso esporádicos</div></div>
+    <div class="stat"><div class="n">${euro(st.ingresoEsporadicosBecados)}</div><div class="l">Ingreso becados (esporádicos)</div></div>`;
+
+  const labels = Object.keys(st.porClase);
+  const dataMarcados = labels.map(c=>st.porClase[c].marcados);
+  const dataConfirmados = labels.map(c=>st.porClase[c].confirmados);
+  if(chartDay) chartDay.destroy();
+  chartDay = new Chart($('#chartDay'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Marcados', data:dataMarcados, backgroundColor:'#D9A441'},
+      {label:'Confirmados', data:dataConfirmados, backgroundColor:'#2F6E4F'}
+    ]},
+    options:{responsive:true, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
+}
+
+/* ---------------- Resumen mensual ---------------- */
+let chartMonthAtt=null, chartMonthIncome=null;
+function daysInMonth(yyyymm){
+  const [y,m] = yyyymm.split('-').map(Number);
+  const n = new Date(y, m, 0).getDate();
+  return Array.from({length:n}, (_,i)=> `${yyyymm}-${String(i+1).padStart(2,'0')}`);
+}
+async function getMonthData(yyyymm){
+  const dates = daysInMonth(yyyymm);
+  let totalConfirmados=0, ingresoBecados=0, ingresoNoBecados=0;
+  const perDay = [];
+  for(const date of dates){
+    if(attendanceCache[date] === undefined){
+      const snap = await get(ref(db,'attendance/'+date));
+      attendanceCache[date] = snap.val() || {};
+    }
+    const st = computeDayStats(date);
+    totalConfirmados += st.confirmados;
+    ingresoBecados += st.ingresoEsporadicosBecados;
+    ingresoNoBecados += st.ingresoEsporadicosNoBecados;
+    perDay.push(st.confirmados);
+  }
+  let ingresoMensual=0, ingresoQuincena=0;
+  for(const classId of Object.keys(students)){
+    for(const s of Object.values(students[classId])){
+      if(s.tipoPago==='mensual') ingresoMensual += Math.max(0,(precios.mesEntero||0) - (s.becado?(s.becaImporte||0):0));
+      else if(s.tipoPago==='quincena') ingresoQuincena += Math.max(0,(precios.medioMes||0) - (s.becado?(s.becaImporte||0):0));
+    }
+  }
+  return {dates, perDay, totalConfirmados, ingresoBecados, ingresoNoBecados, ingresoMensual, ingresoQuincena};
+}
+async function renderMonthStats(){
+  if(rol!=='admin') return;
+  const yyyymm = $('#adminMonth').value || todayStr().slice(0,7);
+  const d = await getMonthData(yyyymm);
+  const ingresoTotal = d.ingresoBecados + d.ingresoNoBecados + d.ingresoMensual + d.ingresoQuincena;
+  $('#adminMonthStats').innerHTML = `
+    <div class="stat"><div class="n">${d.totalConfirmados}</div><div class="l">Comidas servidas (mes)</div></div>
+    <div class="stat"><div class="n">${euro(d.ingresoMensual+d.ingresoQuincena)}</div><div class="l">Mensualidades/quincenas</div></div>
+    <div class="stat"><div class="n">${euro(d.ingresoNoBecados)}</div><div class="l">Esporádicos (no becados)</div></div>
+    <div class="stat"><div class="n">${euro(d.ingresoBecados)}</div><div class="l">Esporádicos becados</div></div>
+    <div class="stat"><div class="n">${euro(ingresoTotal)}</div><div class="l">Ingreso total estimado</div></div>`;
+  if(chartMonthAtt) chartMonthAtt.destroy();
+  chartMonthAtt = new Chart($('#chartMonthAttendance'), {
+    type:'line',
+    data:{ labels: d.dates.map(x=>x.slice(8)), datasets:[{label:'Confirmados por día', data:d.perDay, borderColor:'#2F6E4F', tension:.2}]},
+    options:{responsive:true, plugins:{title:{display:true,text:'Asistencia diaria confirmada'}}}
+  });
+  if(chartMonthIncome) chartMonthIncome.destroy();
+  chartMonthIncome = new Chart($('#chartMonthIncome'), {
+    type:'bar',
+    data:{ labels:['Mensual/Quincena','Esporádico no becado','Esporádico becado'],
+      datasets:[{label:'Ingreso (€)', data:[d.ingresoMensual+d.ingresoQuincena, d.ingresoNoBecados, d.ingresoBecados],
+        backgroundColor:['#2F6E4F','#D9A441','#B3452F']}]},
+    options:{responsive:true, plugins:{title:{display:true,text:'Ingresos por tipo'}}}
+  });
+}
+
+/* ---------------- Exportar Excel ---------------- */
+if(rol==='admin'){
+  $('#btnExport').addEventListener('click', async ()=>{
+    const yyyymm = $('#adminMonth').value || todayStr().slice(0,7);
+    const wb = XLSX.utils.book_new();
+
+    const studentRows = [];
+    for(const classId of Object.keys(students)){
+      for(const s of Object.values(students[classId])){
+        studentRows.push({Clase:classId, Nombre:s.nombre, Alergias:s.alergias||'', TipoPago:s.tipoPago,
+          Becado: s.becado?'Sí':'No', BecaImporte: s.becaImporte||0});
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentRows), 'Alumnos');
+
+    const d = await getMonthData(yyyymm);
+    const asistRows = d.dates.map((date,i)=>({Fecha:date, Confirmados: d.perDay[i]}));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(asistRows), 'Asistencia');
+
+    const resumenRows = [
+      {Concepto:'Comidas servidas (mes)', Valor:d.totalConfirmados},
+      {Concepto:'Ingreso mensualidades/quincenas', Valor:d.ingresoMensual+d.ingresoQuincena},
+      {Concepto:'Ingreso esporádicos no becados', Valor:d.ingresoNoBecados},
+      {Concepto:'Ingreso esporádicos becados', Valor:d.ingresoBecados}
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumenRows), 'Resumen mensual');
+
+    XLSX.writeFile(wb, `comedor-afa-${yyyymm}.xlsx`);
+  });
+}
+
+}
+
+</body>
+</html>
+</script>
+</body>
+</html>
