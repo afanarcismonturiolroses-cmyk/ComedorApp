@@ -3,22 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Reparar index</title>
+<title>Reparar index v2</title>
 <style>
 body{font-family:sans-serif;padding:1rem;font-size:16px}
-button{font:inherit;padding:.8em 1.2em;border:none;border-radius:8px;background:#2F6E4F;color:#fff;font-weight:700}
+button,a.dl{display:inline-block;font:inherit;padding:.8em 1.2em;border:none;border-radius:8px;background:#2F6E4F;color:#fff;font-weight:700;text-decoration:none;margin:.3rem 0}
 button:disabled{opacity:.4}
+a.dl.off{opacity:.4;pointer-events:none}
 li{margin:.4rem 0}
 </style>
 </head>
 <body>
-<h3>Reparar index.html</h3>
+<h3>Reparar index.html (v2)</h3>
 <ul id="log"></ul>
-<button id="btn" disabled>Copiar index.html reparado</button>
+<a id="dl" class="dl off" download="index.html">Descargar index.html reparado</a><br>
+<button id="btn" disabled>Copiar (plan B)</button>
 
 <script>
 var L = document.getElementById('log');
-var btn = document.getElementById('btn');
 function say(t){ var li = document.createElement('li'); li.textContent = t; L.appendChild(li); }
 
 var LOADER = `async function loadRoleAndStart(user){
@@ -53,13 +54,16 @@ fetch('index.html?t=' + Date.now(), { cache: 'no-store' })
     var lines = html.split('\n');
     say('Descargado: ' + lines.length + ' líneas');
 
-    var closes = [];
-    for (var i = 0; i < lines.length; i++) { if (lines[i].trim() === '</main>') closes.push(i); }
-    say('Líneas "</main>" encontradas: ' + closes.length + ' (en las líneas ' + closes.map(function(x){ return x + 1; }).join(', ') + ')');
-    if (closes.length !== 2) { say('✗ Esperaba exactamente 2. Me paro sin tocar nada.'); return; }
+    var firstMain = -1, lastScript = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (firstMain < 0 && lines[i].trim() === '</main>') firstMain = i;
+      if (lines[i].indexOf('<script type="module">') >= 0) lastScript = i;
+    }
+    say('Primer </main>: línea ' + (firstMain + 1) + ' · último script de módulo: línea ' + (lastScript + 1));
+    if (firstMain < 0 || lastScript <= firstMain) { say('✗ Estructura inesperada. Me paro.'); return; }
 
-    var out = lines.slice(0, closes[0] + 1).concat(lines.slice(closes[1] + 1)).join('\n');
-    say('Quitado el trozo duplicado. Líneas ahora: ' + out.split('\n').length);
+    var out = lines.slice(0, firstMain + 1).concat([''], lines.slice(lastScript)).join('\n');
+    say('Reconstruido. Líneas: ' + out.split('\n').length);
 
     if (out.indexOf('loadRoleAndStart') >= 0) { say('✗ Aún queda código de roles duplicado. Me paro.'); return; }
 
@@ -68,7 +72,7 @@ fetch('index.html?t=' + Date.now(), { cache: 'no-store' })
       var n = out.split(ch[0]).length - 1;
       if (n === 1) { out = out.replace(ch[0], function(){ return ch[1]; }); say('✓ Cambio ' + (c + 1) + ' aplicado'); }
       else if (ch[2]) { say('✗ Cambio ' + (c + 1) + ': encontrado ' + n + ' veces (debe ser 1). Me paro.'); return; }
-      else { say('· Cambio ' + (c + 1) + ' (texto opcional) no encontrado, se omite'); }
+      else { say('· Cambio ' + (c + 1) + ' (opcional) no encontrado, se omite'); }
     }
 
     var re = new RegExp('<scr' + 'ipt type="module">([\\s\\S]*?)<\\/scr' + 'ipt>', 'g');
@@ -84,13 +88,18 @@ fetch('index.html?t=' + Date.now(), { cache: 'no-store' })
     if (!ok) return;
 
     var total = out.split('\n').length;
-    say('✓ Sin errores de sintaxis. LÍNEAS TOTALES: ' + total + ' (deben ser 1082)');
-    say('Caracteres: ' + out.length);
+    say('✓ Sin errores de sintaxis. LÍNEAS TOTALES: ' + total + ' (deben ser 1082). Caracteres: ' + out.length);
+
+    var dl = document.getElementById('dl');
+    dl.href = URL.createObjectURL(new Blob([out], { type: 'text/html' }));
+    dl.classList.remove('off');
+
+    var btn = document.getElementById('btn');
     btn.disabled = false;
     btn.onclick = function(){
       navigator.clipboard.writeText(out).then(
         function(){ say('✓ COPIADO (' + total + ' líneas).'); },
-        function(){ say('✗ No se pudo copiar automáticamente.'); }
+        function(){ say('✗ No se pudo copiar.'); }
       );
     };
   })
