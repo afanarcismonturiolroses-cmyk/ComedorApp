@@ -297,7 +297,7 @@ canvas{max-width:100%;}
       <p class="small">Crea la cuenta en Firebase Console → Authentication → Users → Add user. Copia su UID y asígnale aquí el rol.</p>
       <div class="flexcol">
         <input id="rolUid" placeholder="UID del usuario">
-        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="admin">Administración</option></select>
+        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="admin">Administración</option></select>
         <div id="rolClaseBox"><select id="rolClase"></select></div>
         <button id="btnGuardarRol">Guardar rol</button>
         <span id="rolStatus" class="small"></span>
@@ -381,6 +381,14 @@ canvas{max-width:100%;}
       <button id="btnExport">Descargar Excel</button>
     </div>
 
+  </section>
+
+  <!-- ============ VISTA TESORERÍA ============ -->
+  <section id="view-tesoreria" class="hidden">
+    <div class="card" id="sec-tes-inicio">
+      <h2>Tesorería</h2>
+      <p class="small">Esta sección está en construcción. Aquí se gestionarán ingresos, gastos, presupuesto e informes de la AFA.</p>
+    </div>
   </section>
 
   </div>
@@ -514,7 +522,7 @@ const rol = window.__ROL;
 const claseParam = window.__CLASE;
 
 function showSection(id, title, subtitle){
-  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin'].forEach(v=>{
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria'].forEach(v=>{
     $('#'+v).classList.toggle('hidden', v!==id);
   });
   $('#pageTitle').textContent = title;
@@ -533,6 +541,9 @@ const SIDE_SECTIONS = {
     ['#sec-alumnos','Alumnos y becas'],
     ['#sec-clases','Clases'],
     ['#sec-export','Exportar datos']
+  ],
+  tesoreria: [
+    ['#sec-tes-inicio','Tesorería']
   ]
 };
 function closeSideMenu(){
@@ -565,6 +576,8 @@ if(rol==='profesor'){
   else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
 } else if(rol==='monitora'){
   showSection('view-monitora','🍽️ Comedor — Monitora','Recuento y confirmación');
+} else if(rol==='tesoreria'){
+  showSection('view-tesoreria','💰 AFA — Tesorería','Ingresos, gastos y presupuesto');
 } else if(rol==='admin'){
   showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
 } else {
