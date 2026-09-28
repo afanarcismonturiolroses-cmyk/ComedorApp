@@ -168,6 +168,7 @@
     <div class="msg-screen card">
       <h2>Sin permisos asignados</h2>
       <p class="small">Tu cuenta no tiene ningún rol asignado. Pide a Administración de la AFA que te lo active.</p>
+      <p class="small" id="noRoleInfo" style="word-break:break-all;"></p>
     </div>
   </section>
 
@@ -404,9 +405,15 @@ async function loadRoleAndStart(user){
     if(typeof v === 'string'){ r = v; }
     else if(v && typeof v === 'object'){ r = v.rol || null; c = v.clase || null; }
     window.__ROL = r; window.__CLASE = c;
+    if(!['admin','monitora','profesor'].includes(r)){
+      const el=document.getElementById('noRoleInfo');
+      if(el) el.textContent='Datos técnicos · UID: '+user.uid+' · valor leído en roles/'+user.uid+': '+JSON.stringify(v);
+    }
   }catch(e){
     console.error('No se pudo leer el rol:', e);
     window.__ROL = null; window.__CLASE = null;
+    const el=document.getElementById('noRoleInfo');
+    if(el) el.textContent='Datos técnicos · UID: '+user.uid+' · error al leer el rol: '+(e.code||'')+' '+(e.message||e);
   }
   startApp();
 }
