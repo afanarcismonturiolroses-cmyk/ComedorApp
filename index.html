@@ -552,6 +552,8 @@ import {
 const app = initializeApp(window.FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db = getDatabase(app);
+let tesMovimientos = {};
+let tesResumen = null;
 
 const loginEmail = document.querySelector("#loginEmail");
 const loginPassword = document.querySelector("#loginPassword");
@@ -694,7 +696,8 @@ const AREAS = {
       ['#sec-tes-import','Importar extracto'],
       ['#sec-tes-manual','Añadir movimiento'],
       ['#sec-tes-movs','Listado']
-    ]
+    ],
+    onShow: () => { if(typeof renderResumenCurso==='function') renderResumenCurso(); }
   }
 };
 // El rol admin es universal: tiene acceso a cualquier área registrada arriba,
@@ -755,6 +758,9 @@ function goToArea(key){
   showSection(a.view, `${a.icon} AFA — ${a.label}${supervisando?' (supervisión)':''}`, a.subtitle);
   renderSideNav(supervisando ? [['#action:admin','◀ Volver a Comedor'], ...a.items] : a.items, a.subtitle);
   window.scrollTo({top:0});
+  // Algunas áreas necesitan volver a dibujarse al hacerse visibles (p. ej. gráficos Chart.js,
+  // que salen en blanco si se crearon con el contenedor todavía oculto).
+  if(typeof a.onShow==='function') a.onShow();
 }
 $('#btnMenu').addEventListener('click', ()=> $('#sideMenu').classList.contains('open') ? closeSideMenu() : openSideMenu());
 $('#sideOverlay').addEventListener('click', closeSideMenu);
@@ -1098,7 +1104,6 @@ if(rol==='monitora'){
 /* =========================================================================
    VISTA TESORERÍA
    ========================================================================= */
-let tesMovimientos = {};
 
 function tesCategoriaAuto(concepto){
   return ''; // sin categorizar por ahora; se añadirá más adelante
@@ -1140,8 +1145,6 @@ function parseCSVtext(text){
   const sep = (text.split('\n')[0].split(';').length > text.split('\n')[0].split(',').length) ? ';' : ',';
   return text.split(/\r?\n/).filter(l=>l.trim()!=='').map(l=>l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
 }
-
-let tesResumen = null;
 
 /* ============================================================
    Cuentas del curso — mismo motor que la web pública "Cuentas
