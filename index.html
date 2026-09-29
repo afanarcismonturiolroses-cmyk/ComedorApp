@@ -130,6 +130,14 @@ canvas{max-width:100%;}
 .copyrow{display:flex;gap:.4rem;align-items:center;justify-content:space-between;
   padding:.5rem 0;border-bottom:1px solid var(--line);}
 .copyrow:last-child{border-bottom:none;}
+details.card{padding:0;}
+details.card>summary{cursor:pointer;list-style:none;padding:1.1rem;font-size:1.1rem;font-weight:700;color:var(--sky-900);display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
+details.card>summary::-webkit-details-marker{display:none;}
+details.card>summary .count{font-size:.8rem;font-weight:600;color:var(--muted);background:var(--paper);border-radius:999px;padding:.15em .7em;}
+details.card>summary::after{content:'▸';color:var(--muted);transition:transform .15s;}
+details.card[open]>summary::after{transform:rotate(90deg);}
+details.card>summary:hover{background:var(--paper);}
+details.card>.details-body{padding:0 1.1rem 1.1rem;}
 .banner{padding:.8rem 1rem;border-radius:12px;margin-bottom:1rem;font-weight:600;color:#fff;}
 .banner.amarillo{background:var(--amber);}
 .banner.rojo{background:var(--rose);}
@@ -313,8 +321,12 @@ canvas{max-width:100%;}
         <textarea id="cuentasResultado" class="hidden" rows="8" readonly style="font-size:.85rem;"></textarea>
         <button id="btnCopiarCuentas" class="secondary hidden">Copiar lista de usuarios y contraseñas</button>
       </div>
-      <h3 style="margin-top:1rem;">Roles asignados</h3>
-      <div id="rolesList"></div>
+      <details class="card" style="margin-top:1rem;padding:0;border:1px solid var(--line);" open>
+        <summary style="padding:.8rem 1rem;">Roles asignados <span class="count" id="rolesCount"></span></summary>
+        <div class="details-body" style="padding:0 1rem 1rem;">
+          <div id="rolesList"></div>
+        </div>
+      </details>
       <div id="enlacesList" class="hidden"></div>
     </div>
 
@@ -357,16 +369,18 @@ canvas{max-width:100%;}
       <canvas id="chartMonthIncome" height="140" style="margin-top:1rem;"></canvas>
     </div>
 
-    <div class="card" id="sec-alumnos">
-      <h2>Alumnos y becas (edición manual)</h2>
-      <div class="row"><select id="adminClassFilter"></select></div>
-      <div style="overflow-x:auto;">
-        <table id="adminStudentsTable">
-          <thead><tr><th>Alumno / ID</th><th>Alergias</th><th>Pago</th><th>Becado</th><th>Beca €</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
+    <details class="card" id="sec-alumnos">
+      <summary>Alumnos y becas (edición manual) <span class="count" id="alumnosCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><select id="adminClassFilter"></select></div>
+        <div style="overflow-x:auto;">
+          <table id="adminStudentsTable">
+            <thead><tr><th>Alumno / ID</th><th>Alergias</th><th>Pago</th><th>Becado</th><th>Beca €</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </details>
 
     <div class="card" id="sec-clases">
       <h2>Clases</h2>
@@ -436,15 +450,15 @@ canvas{max-width:100%;}
       <span id="tesAddStatus" class="small"></span>
     </div>
 
-    <div class="card" id="sec-tes-movs">
-      <div class="row" style="justify-content:space-between;">
-        <h2>Movimientos</h2>
-        <select id="tesFiltroMes" style="max-width:160px;"></select>
+    <details class="card" id="sec-tes-movs">
+      <summary>Movimientos <span class="count" id="tesMovsCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><select id="tesFiltroMes" style="max-width:160px;"></select></div>
+        <div style="overflow-x:auto;">
+          <table id="tesTable"><thead><tr><th>Fecha</th><th>Concepto</th><th>Origen</th><th style="text-align:right;">Importe</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
       </div>
-      <div style="overflow-x:auto;">
-        <table id="tesTable"><thead><tr><th>Fecha</th><th>Concepto</th><th>Origen</th><th style="text-align:right;">Importe</th><th></th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
+    </details>
   </section>
 
   </div>
@@ -1150,6 +1164,7 @@ if(canAccess('tesoreria')){
       .filter(([id,m])=> !filtro || String(m.fecha||'').slice(0,7)===filtro)
       .sort((a,b)=> (b[1].fecha||'').localeCompare(a[1].fecha||''));
     const tbody = document.querySelector('#tesTable tbody');
+    const cnt=$('#tesMovsCount'); if(cnt) cnt.textContent = rows.length ? `${rows.length}` : '';
     tbody.innerHTML = rows.map(([id,m])=>`
       <tr>
         <td>${m.fecha||''}</td>
@@ -1259,6 +1274,7 @@ if(rol==='admin'){
       const c=(v&&typeof v==='object'&&v.clase)?' · '+v.clase:'';
       return `<div class="copyrow"><span class="small"><strong>${r}${c}</strong><br>${uid}</span><button class="danger rol-del" data-uid="${uid}">✕</button></div>`;
     }).join('') || '<p class="small">Sin roles asignados.</p>';
+    const rc=$('#rolesCount'); if(rc) rc.textContent = Object.keys(data).length ? `${Object.keys(data).length}` : '';
     $$('#rolesList .rol-del').forEach(b=>b.addEventListener('click',async()=>{
       if(b.dataset.uid===auth.currentUser?.uid){ alert('No puedes quitarte tu propio rol de administración.'); return; }
       if(!confirm('¿Quitar este rol?')) return;
@@ -1516,6 +1532,7 @@ function renderAdminStudentsTable(){
     }
   }
   tbody.innerHTML = rowsHtml.join('') || `<tr><td colspan="6" class="small">Sin alumnos. Importa una lista arriba.</td></tr>`;
+  const ac=$('#alumnosCount'); if(ac) ac.textContent = rowsHtml.length ? `${rowsHtml.length}` : '';
   $$('#adminStudentsTable .f-guardar').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const tr = btn.closest('tr');
