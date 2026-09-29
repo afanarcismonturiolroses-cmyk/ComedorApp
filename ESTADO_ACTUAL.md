@@ -26,3 +26,4 @@ la fecha, quién eres y qué has cambiado.
   roster_by_clase. Commit `16b87bba` en index.html.
 - 2026-09-29, Cowork: publicadas las reglas para students/ALU-XXXX plano + roster_by_clase.
 - 2026-09-29, Claude (chat): cuentas de usuario corto ahora usan afanarcismonturiolroses+<usuario>@gmail.com en vez de @comedorafa.local. Commit `adc744ff`.
+- 2026-09-29, Cowork: publicadas las reglas con el rol socios (reglas_v3.json).
