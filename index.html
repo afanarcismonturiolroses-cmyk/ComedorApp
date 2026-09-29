@@ -470,9 +470,9 @@ const viewLogin = document.querySelector("#view-login");
 const userBar = document.querySelector("#userBar");
 const userEmail = document.querySelector("#userEmail");
 
-const USER_DOMAIN='@comedorafa.local';
+const USER_DOMAIN='@gmail.com'; const USER_ALIAS_PREFIX='afanarcismonturiolroses+';
 function normUser(u){ return String(u||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,''); }
-function toLoginEmail(u){ u=String(u||'').trim(); return u.includes('@') ? u : normUser(u)+USER_DOMAIN; }
+function toLoginEmail(u){ u=String(u||'').trim(); return u.includes('@') ? u : USER_ALIAS_PREFIX+normUser(u)+USER_DOMAIN; }
 function showLoginError(message){ loginError.textContent = message; loginError.classList.remove("hidden"); }
 
 loginEmail.addEventListener("keydown", e=>{ if(e.key==="Enter") loginPassword.focus(); });
