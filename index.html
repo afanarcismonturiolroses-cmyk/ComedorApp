@@ -138,6 +138,54 @@ details.card>summary::after{content:'▸';color:var(--muted);transition:transfor
 details.card[open]>summary::after{transform:rotate(90deg);}
 details.card>summary:hover{background:var(--paper);}
 details.card>.details-body{padding:0 1.1rem 1.1rem;}
+
+/* ---- Cuentas del curso (estilo Cuentas Transparentes) ---- */
+.cc-scope h3{font-size:1.05rem;margin-bottom:.15rem;}
+.cc-scope h4{font-size:.95rem;font-weight:700;margin:0 0 .5rem;}
+.cc-selector{display:inline-flex;background:var(--paper);border-radius:12px;padding:.25rem;gap:.2rem;margin-bottom:.4rem;}
+.cc-selector button{background:transparent;color:var(--sky-800);padding:.5em 1em;font-size:.85rem;border-radius:9px;}
+.cc-selector button.on{background:#fff;color:var(--sky-900);box-shadow:0 1px 3px rgba(15,23,42,.12);}
+.cc-act{font-size:.78rem;color:var(--muted);margin:.2rem 0 .8rem;}
+.cc-kpis{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:1rem;}
+.cc-kpi{background:#fff;border-radius:14px;border-top:4px solid var(--line);padding:1rem;box-shadow:0 1px 3px rgba(15,23,42,.06);}
+.cc-kpi .head{display:flex;align-items:center;gap:.4rem;color:var(--muted);font-size:.85rem;}
+.cc-kpi .val{font-size:1.5rem;font-weight:700;margin-top:.3rem;}
+.cc-kpi .sub{font-size:.75rem;color:var(--muted);margin-top:.2rem;}
+.cc-kpi .more{display:block;margin-top:.5rem;font-size:.82rem;font-weight:700;color:var(--sky-700);background:none;border:none;padding:0;}
+.cc-section{margin-top:1.6rem;}
+.cc-grid2{display:grid;gap:1rem;grid-template-columns:1fr;margin-top:.8rem;}
+@media(min-width:820px){.cc-grid2{grid-template-columns:1fr 1fr;}}
+.cc-panel{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(15,23,42,.06);padding:1rem;}
+.cc-ing{color:var(--emerald-text);}
+.cc-gas{color:var(--rose-text);}
+.cc-tot{color:var(--muted);font-weight:400;font-size:.85rem;}
+.cc-row{border-bottom:1px solid var(--line);padding:.7rem 0;}
+.cc-row:last-child{border-bottom:none;}
+.cc-row-head{width:100%;text-align:left;background:none;border:none;padding:0;color:inherit;}
+.cc-row-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;}
+.cc-row-top .n{font-weight:600;font-size:.92rem;}
+.cc-row-top .v{display:flex;align-items:center;gap:.4rem;flex-shrink:0;font-weight:700;}
+.cc-row-top .v svg{width:14px;height:14px;color:var(--muted);transition:transform .2s;}
+.cc-row[data-open="true"] .v svg{transform:rotate(180deg);}
+.cc-bar{height:8px;background:var(--paper);border-radius:999px;overflow:hidden;margin-top:.45rem;}
+.cc-bar>div{height:100%;border-radius:999px;transition:width .5s ease;}
+.cc-pct{font-size:.72rem;color:var(--muted);margin-top:.25rem;}
+.cc-detail{display:none;padding-top:.6rem;font-size:.88rem;color:var(--ink);}
+.cc-row[data-open="true"] .cc-detail{display:block;}
+.cc-detail ul{list-style:none;margin:.6rem 0 0;padding:0;}
+.cc-detail li{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--line);font-size:.85rem;}
+.cc-detail li:last-child{border-bottom:none;}
+.cc-more-btn{margin-top:.6rem;background:none;border:none;padding:0;color:var(--sky-700);font-weight:700;font-size:.85rem;}
+.cc-mes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem;margin-top:.4rem;font-size:.75rem;}
+.cc-mes-grid div{background:var(--paper);border-radius:8px;padding:.3em .5em;display:flex;justify-content:space-between;}
+.cc-progress-row{margin-bottom:.8rem;}
+.cc-progress-row .top{display:flex;justify-content:space-between;font-size:.88rem;}
+.cc-progress-row .ref{color:var(--muted);}
+.cc-progress-row .note{font-size:.72rem;color:var(--muted);margin-top:.2rem;}
+.cc-chart{position:relative;height:220px;}
+.cc-modal{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(15,23,42,.5);}
+.cc-modal.hidden{display:none;}
+.cc-modal-box{background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.25);max-width:420px;width:100%;padding:1.2rem;}
 .banner{padding:.8rem 1rem;border-radius:12px;margin-bottom:1rem;font-weight:600;color:#fff;}
 .banner.amarillo{background:var(--amber);}
 .banner.rojo{background:var(--rose);}
@@ -401,15 +449,44 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <section id="view-tesoreria" class="hidden">
 
     <!-- ---- Cuentas del curso (datos oficiales, agregados por categoría) ---- -->
-    <div class="card" id="sec-tes-resumen">
-      <div class="row" style="justify-content:space-between;">
-        <h2>Cuentas del curso</h2>
-        <select id="tesCursoSel" style="max-width:140px;"></select>
+    <details class="card" id="sec-tes-resumen" open>
+      <summary>Cuentas del curso</summary>
+      <div class="details-body cc-scope">
+        <div id="ccSel" class="cc-selector"></div>
+        <p class="cc-act" id="ccAct"></p>
+        <div id="ccAviso"></div>
+        <section class="cc-kpis" id="ccKpis"></section>
+
+        <section class="cc-section">
+          <h3>¿De dónde viene y en qué se gasta el dinero?</h3>
+          <p class="small">Toca cada categoría para ver el detalle. La barra indica el peso sobre el total.</p>
+          <div class="cc-grid2">
+            <div class="cc-panel"><h4 class="cc-ing">Ingresos <span class="cc-tot" id="ccTi"></span></h4><div id="ccLi"></div></div>
+            <div class="cc-panel"><h4 class="cc-gas">Gastos <span class="cc-tot" id="ccTg"></span></h4><div id="ccLg"></div></div>
+          </div>
+        </section>
+
+        <section class="cc-section">
+          <h3>Presupuesto y gasto real</h3>
+          <p class="small" id="ccPnota"></p>
+          <div class="cc-grid2">
+            <div class="cc-panel" id="ccPt"></div>
+            <div class="flexcol" style="gap:1rem;">
+              <div class="cc-panel"><h4>Previsto vs real (gastos)</h4><div class="cc-chart"><canvas id="ccC1"></canvas></div></div>
+              <div class="cc-panel"><h4>¿En qué se gasta?</h4><div class="cc-chart"><canvas id="ccC2"></canvas></div></div>
+            </div>
+          </div>
+        </section>
       </div>
-      <div class="grid-stats" id="tesResumenStats"></div>
-      <div class="grid gap-6" style="display:grid;gap:1rem;grid-template-columns:1fr;margin-top:.8rem;">
-        <div><h3 style="color:var(--emerald-text);">Ingresos</h3><div id="tesResumenIngresos"></div></div>
-        <div><h3 style="color:var(--rose-text);">Gastos</h3><div id="tesResumenGastos"></div></div>
+    </details>
+
+    <div id="ccModal" class="cc-modal hidden">
+      <div class="cc-modal-box">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;">
+          <h3 id="ccMt" style="margin:0;"></h3>
+          <button id="ccMx" class="secondary" style="padding:.2em .7em;">✕</button>
+        </div>
+        <div id="ccMb" class="small" style="margin-top:.6rem;line-height:1.5;"></div>
       </div>
     </div>
 
@@ -1066,33 +1143,137 @@ function parseCSVtext(text){
 
 let tesResumen = null;
 
+/* ============================================================
+   Cuentas del curso — mismo motor que la web pública "Cuentas
+   Transparentes", adaptado para leer de tesResumen (Firebase)
+   en vez de una variable D fija, con ids propios (cc*).
+   ============================================================ */
+const ccE = n => (n||0).toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const CC_MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+let ccCur = null, ccCharts = {}, ccItems = {i:[],g:[]};
+
+function ccModal(t,html){ $('#ccMt').textContent=t; $('#ccMb').innerHTML=html; $('#ccModal').classList.remove('hidden'); }
+(function initCcModal(){
+  const mx=$('#ccMx'), modal=$('#ccModal');
+  if(!mx || mx.dataset.wired) return;
+  mx.dataset.wired='1';
+  mx.addEventListener('click', ()=>modal.classList.add('hidden'));
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.add('hidden'); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') modal.classList.add('hidden'); });
+})();
+
+function ccSelector(D){
+  const cs=D.cursos, ant=cs[cs.length-2];
+  const opciones = ant ? [[ant,'Curso anterior'],[D.actual,'Curso en curso']] : [[D.actual,'Curso en curso']];
+  $('#ccSel').innerHTML = opciones.map(([c,t])=>
+    `<button data-c="${c}" class="${c===ccCur?'on':''}">${t} ${c}</button>`).join('');
+  $$('#ccSel button').forEach(b=>b.addEventListener('click', ()=>{ ccCur=b.dataset.c; ccRender(D); }));
+}
+
+function ccKpi(ico,t,v,colorVar,sub,btnHtml){
+  return `<div class="cc-kpi" style="border-top-color:${colorVar};">
+    <div class="head"><span style="font-size:1.2rem;">${ico}</span>${t}</div>
+    <div class="val">${v}</div>
+    <p class="sub">${sub}</p>${btnHtml||''}</div>`;
+}
+
+function ccRows(list, tot, color, tipo){
+  if(!list.length) return '<p class="small" style="padding:.6rem 0;">Sin movimientos todavía.</p>';
+  return list.map((x,i)=>{
+    const p = tot ? x.v/tot*100 : 0;
+    const subs = x.s ? `<ul>${x.s.map(s=>`<li><span>${s[0]}</span><b>${ccE(s[1])}</b></li>`).join('')}</ul>` : '';
+    const ms = (x.m && Object.keys(x.m).length>1) ? `<p class="small" style="margin-top:.6rem;">Mes a mes</p><div class="cc-mes-grid">${Object.entries(x.m).map(([k,v])=>`<div><span>${CC_MES[+k.slice(5)-1]} ${k.slice(2,4)}</span><b>${ccE(v)}</b></div>`).join('')}</div>` : '';
+    return `<div class="cc-row" data-open="false" data-idx="${i}" data-tipo="${tipo}">
+      <button class="cc-row-head">
+        <div class="cc-row-top"><span class="n">${x.n}</span>
+          <span class="v">${ccE(x.v)}<svg viewBox="0 0 20 20" fill="currentColor"><path d="M5.3 7.3 10 12l4.7-4.7 1.4 1.4L10 14.8 3.9 8.7z"/></svg></span></div>
+        <div class="cc-bar"><div style="width:${p.toFixed(1)}%;background:${color};"></div></div>
+        <div class="cc-pct">${p.toFixed(0)}% del total</div>
+      </button>
+      <div class="cc-detail"><p>${x.d||''}</p>${subs}${ms}
+        <button class="cc-more-btn" data-info="${tipo},${i}">Más info →</button></div>
+    </div>`;
+  }).join('');
+}
+
+function ccWireRows(host){
+  host.querySelectorAll('.cc-row-head').forEach(btn=>btn.addEventListener('click', ()=>{
+    const row=btn.closest('.cc-row');
+    row.dataset.open = row.dataset.open==='true' ? 'false' : 'true';
+  }));
+  host.querySelectorAll('[data-info]').forEach(btn=>btn.addEventListener('click', ()=>{
+    const [t,i]=btn.dataset.info.split(',');
+    const x = ccItems[t][+i];
+    ccModal(x.n, `<p>${x.d||''}</p><p style="font-size:1.4rem;font-weight:700;margin:.4rem 0;">${ccE(x.v)}</p>`+
+      (x.s ? '<p>Incluye: '+x.s.map(s=>s[0]).join(', ')+'.</p>' : '')+
+      '<p class="small" style="color:var(--muted);">¿Dudas sobre esta partida? Pregunta a la junta de la AFA.</p>');
+  }));
+}
+
+function ccRender(D){
+  ccSelector(D);
+  const c = D.datos[ccCur] || {i:[],g:[]};
+  ccItems = {i:c.i||[], g:c.g||[]};
+  const I = (c.i||[]).reduce((s,x)=>s+x.v,0), G = (c.g||[]).reduce((s,x)=>s+x.v,0), B = I-G;
+  const parcial = ccCur===D.actual;
+  $('#ccAct').textContent = D.act ? 'Datos actualizados a '+new Date(D.act).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}) : '';
+  $('#ccAviso').innerHTML = parcial ? `<div class="banner amarillo">📅 El curso ${ccCur} acaba de empezar: estas cifras son solo de las primeras semanas.</div>` : '';
+  $('#ccKpis').innerHTML =
+    ccKpi('💶','Ingresos totales', ccE(I), 'var(--emerald)', 'Todo el dinero que ha entrado en el curso') +
+    ccKpi('🧾','Gastos totales', ccE(G), 'var(--sky-700)', 'Todo el dinero que ha salido en el curso') +
+    ccKpi(B>=0?'🌱':'⚠️','Balance del curso', `<span style="color:${B>=0?'var(--emerald)':'var(--rose)'}">${B>=0?'+':''}${ccE(B)}</span>`, B>=0?'var(--emerald)':'var(--rose)',
+      `Dinero disponible hoy: <b>${ccE(D.saldo)}</b>`,
+      `<button class="cc-more-btn" id="ccQb" style="display:block;">¿Qué significa este balance?</button>`);
+  const qb=$('#ccQb');
+  if(qb) qb.addEventListener('click', ()=>ccModal('¿Qué significa este balance?',
+    `<p>Es la diferencia entre lo que ha entrado y lo que ha salido durante el curso.</p>`+
+    (B<0 ? `<p>Este curso ha salido <b>${ccE(-B)}</b> más de lo que ha entrado. Esa diferencia se cubre con el fondo de reserva de cursos anteriores.</p>` : `<p>Este curso ha entrado <b>${ccE(B)}</b> más de lo que ha salido, que pasa a engrosar el fondo de reserva.</p>`)+
+    `<p>Hoy hay <b>${ccE(D.saldo)}</b> en las cuentas de la AFA: es el colchón para imprevistos y para cubrir retrasos de las ayudas públicas.</p>`));
+  $('#ccTi').textContent = ccE(I); $('#ccTg').textContent = ccE(G);
+  $('#ccLi').innerHTML = ccRows(c.i||[], I, 'var(--emerald)', 'i'); $('#ccLg').innerHTML = ccRows(c.g||[], G, 'var(--rose)', 'g');
+  ccWireRows($('#ccLi')); ccWireRows($('#ccLg'));
+  ccPresupuesto(D, c, I, G, parcial);
+}
+
+function ccPresupuesto(D, c, I, G, parcial){
+  const cs = D.cursos, prev = cs[cs.indexOf(ccCur)-1];
+  const pres = D.pres || {};
+  const hasP = !!pres[ccCur];
+  const ref = (t,x) => hasP ? (pres[ccCur][x.k] ?? null) : (((D.datos[prev]||{})[t]||[]).find(y=>y.k===x.k)?.v ?? null);
+  $('#ccPnota').textContent = hasP ? 'Comparamos el presupuesto aprobado con lo real.' :
+    `Aún no hay presupuesto aprobado cargado: como referencia usamos el curso ${prev||'anterior'}${parcial?' (el actual solo lleva unas semanas)':''}.`;
+  const blk = (tit, list, t, ing) => `<h4 class="${ing?'cc-ing':'cc-gas'}">${tit}</h4>` + (list||[]).map(x=>{
+    const r = ref(t,x), p = r ? x.v/r*100 : null;
+    const col = ing ? 'var(--emerald)' : (p>100 ? 'var(--rose)' : p>85 ? 'var(--amber)' : 'var(--sky-700)');
+    return `<div class="cc-progress-row">
+      <div class="top"><span>${x.n}</span><span><b>${ccE(x.v)}</b> <span class="ref">/ ${r?ccE(r):'—'}</span></span></div>
+      <div class="cc-bar"><div style="width:${Math.min(p||0,100)}%;background:${col};"></div></div>
+      <div class="note">${p==null ? 'Sin referencia' : p.toFixed(0)+'% de lo previsto'}</div>
+    </div>`;
+  }).join('');
+  $('#ccPt').innerHTML = `<p class="small" style="margin-bottom:.7rem;">Real / ${hasP?'presupuesto asignado':'referencia curso '+(prev||'anterior')}</p>` + blk('Ingresos', c.i, 'i', true) + blk('Gastos', c.g, 'g', false);
+
+  Object.values(ccCharts).forEach(ch=>ch.destroy());
+  const gastos = c.g || [];
+  const lab = gastos.map(x=>x.n.length>22 ? x.n.slice(0,21)+'…' : x.n);
+  const ctx1 = $('#ccC1'), ctx2 = $('#ccC2');
+  if(ctx1) ccCharts.a = new Chart(ctx1, {type:'bar', data:{labels:lab, datasets:[
+      {label: hasP?'Presupuesto':'Referencia', data: gastos.map(x=>ref('g',x)||0), backgroundColor:'#cbd5e1', borderRadius:6},
+      {label:'Real', data: gastos.map(x=>x.v), backgroundColor:'#0ea5e9', borderRadius:6}
+    ]}, options:{indexAxis:'y', maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{x:{ticks:{callback:v=>ccE(v)}}}}});
+  if(ctx2) ccCharts.b = new Chart(ctx2, {type:'doughnut', data:{labels:lab, datasets:[{data: gastos.map(x=>x.v),
+      backgroundColor:['#0ea5e9','#14b8a6','#22c55e','#eab308','#f97316','#ef4444','#a855f7','#6366f1','#64748b','#94a3b8','#cbd5e1']}]},
+    options:{maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{boxWidth:10, font:{size:11}}}, tooltip:{callbacks:{label:t=>' '+t.label+': '+ccE(t.parsed)}}}}});
+}
+
 function renderResumenCurso(){
-  const box=$('#tesResumenStats'), boxI=$('#tesResumenIngresos'), boxG=$('#tesResumenGastos'), sel=$('#tesCursoSel');
   if(!tesResumen || !tesResumen.cursos || !tesResumen.cursos.length){
-    box.innerHTML = '<p class="small">Todavía no hay cuentas oficiales cargadas para ningún curso.</p>';
-    boxI.innerHTML=''; boxG.innerHTML=''; sel.innerHTML='';
+    $('#ccKpis').innerHTML = '<p class="small">Todavía no hay cuentas oficiales cargadas para ningún curso.</p>';
+    $('#ccSel').innerHTML=''; $('#ccLi').innerHTML=''; $('#ccLg').innerHTML=''; $('#ccPt').innerHTML=''; $('#ccAct').textContent='';
     return;
   }
-  const cur = sel.value && tesResumen.cursos.includes(sel.value) ? sel.value : (tesResumen.actual || tesResumen.cursos[tesResumen.cursos.length-1]);
-  if(sel.innerHTML==='' ) sel.innerHTML = tesResumen.cursos.map(c=>`<option value="${c}">${c}</option>`).join('');
-  sel.value = cur;
-  const dc = (tesResumen.datos && tesResumen.datos[cur]) || {i:[],g:[]};
-  const ti = (dc.i||[]).reduce((s,x)=>s+x.v,0), tg = (dc.g||[]).reduce((s,x)=>s+x.v,0);
-  box.innerHTML = `
-    <div class="stat"><div class="n">${euro(ti)}</div><div class="l">Ingresos del curso</div></div>
-    <div class="stat"><div class="n">${euro(tg)}</div><div class="l">Gastos del curso</div></div>
-    <div class="stat"><div class="n" style="color:${ti-tg>=0?'var(--emerald)':'var(--rose)'}">${ti-tg>=0?'+':''}${euro(ti-tg)}</div><div class="l">Balance</div></div>`;
-  const fila = (x,total,color)=>{
-    const pct = total>0 ? Math.round(x.v/total*100) : 0;
-    return `<div style="margin-bottom:.6rem;">
-      <div class="row" style="justify-content:space-between;"><span style="font-weight:600;">${x.n}</span><span class="small">${euro(x.v)}</span></div>
-      <div style="background:var(--paper);border-radius:999px;height:8px;overflow:hidden;margin-top:.2rem;">
-        <div style="width:${pct}%;height:100%;background:${color};"></div>
-      </div>
-    </div>`;
-  };
-  boxI.innerHTML = (dc.i||[]).slice().sort((a,b)=>b.v-a.v).map(x=>fila(x,ti,'var(--emerald)')).join('') || '<p class="small">Sin datos.</p>';
-  boxG.innerHTML = (dc.g||[]).slice().sort((a,b)=>b.v-a.v).map(x=>fila(x,tg,'var(--rose)')).join('') || '<p class="small">Sin datos.</p>';
+  if(!ccCur || !tesResumen.cursos.includes(ccCur)) ccCur = tesResumen.actual || tesResumen.cursos[tesResumen.cursos.length-1];
+  ccRender(tesResumen);
 }
 
 if(canAccess('tesoreria')){
@@ -1100,7 +1281,6 @@ if(canAccess('tesoreria')){
     tesResumen = snap.exists() ? snap.val() : null;
     renderResumenCurso();
   });
-  $('#tesCursoSel').addEventListener('change', renderResumenCurso);
 
   if(rol==='admin'){
     $('#sec-tes-sync').classList.remove('hidden');
