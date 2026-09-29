@@ -353,7 +353,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <p class="small">Crea la cuenta en Firebase Console → Authentication → Users → Add user. Copia su UID y asígnale aquí el rol.</p>
       <div class="flexcol">
         <input id="rolUid" placeholder="UID del usuario">
-        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="admin">Administración</option></select>
+        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="socios">Familias y socios</option><option value="admin">Administración</option></select>
         <div id="rolClaseBox"><select id="rolClase"></select></div>
         <button id="btnGuardarRol">Guardar rol</button>
         <span id="rolStatus" class="small"></span>
@@ -538,6 +538,32 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     </details>
   </section>
 
+  <!-- ============ VISTA SOCIOS ============ -->
+  <section id="view-socios" class="hidden">
+    <div class="card" id="sec-soc-resumen">
+      <h2>Familias y socios</h2>
+      <p class="small">Cuota única por familia: <strong>25&nbsp;€</strong>, curso 2026-2027, sea cual sea el número de hijos.</p>
+      <div class="grid-stats" id="socStats"></div>
+    </div>
+
+    <details class="card" id="sec-soc-sugerencias">
+      <summary>Crear familias a partir del alumnado <span class="count" id="socSugCount"></span></summary>
+      <div class="details-body">
+        <p class="small">Agrupa por apellido a los alumnos que todavía no tienen familia asignada. Revisa cada grupo, quita a quien no corresponda y confirma.</p>
+        <button id="btnSocSugerir">Generar sugerencias</button>
+        <div id="socSugerencias" style="margin-top:.8rem;"></div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-soc-familias" open>
+      <summary>Familias <span class="count" id="socFamCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><input type="text" id="socBuscar" placeholder="Buscar por apellido o alumno…"></div>
+        <div id="socFamiliasList" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
+  </section>
+
   </div>
 
 </main>
@@ -671,7 +697,7 @@ const rol = window.__ROL;
 const claseParam = window.__CLASE;
 
 function showSection(id, title, subtitle){
-  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria'].forEach(v=>{
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios'].forEach(v=>{
     $('#'+v).classList.toggle('hidden', v!==id);
   });
   $('#pageTitle').textContent = title;
@@ -698,6 +724,17 @@ const AREAS = {
       ['#sec-tes-movs','Listado']
     ],
     onShow: () => { if(typeof renderResumenCurso==='function') renderResumenCurso(); }
+  },
+  socios: {
+    view: 'view-socios',
+    icon: '👪',
+    label: 'Familias y socios',
+    subtitle: 'Cuota de socio por familia',
+    items: [
+      ['#sec-soc-resumen','Resumen'],
+      ['#sec-soc-sugerencias','Crear familias'],
+      ['#sec-soc-familias','Familias']
+    ]
   }
 };
 // El rol admin es universal: tiene acceso a cualquier área registrada arriba,
@@ -823,12 +860,13 @@ function flatStudents(){
 
 // admin y monitora ven la colección entera (igual que antes); profesor solo puede leer su propia
 // clase, así que primero lee la lista de IDs de roster_by_clase y luego cada alumno por su ID.
-if(rol==='admin' || rol==='monitora'){
+if(rol==='admin' || rol==='monitora' || rol==='socios'){
   onValue(ref(db,'students'), snap=>{
     const raw = snap.val() || {};
     students = groupStudentsByClass(raw);
     if(rol==='monitora') renderMonitoraList();
     if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
+    if(canAccess('socios') && typeof renderSociosAll==='function') renderSociosAll();
   });
 } else if(rol==='profesor' && claseParam){
   onValue(ref(db,'roster_by_clase/'+claseParam), rosterSnap=>{
@@ -1425,6 +1463,156 @@ if(canAccess('tesoreria')){
       });
       await update(ref(db), payload);
       st.textContent='Guardado ✓'; $('#fileExtracto').value=''; setTimeout(()=>{ box.innerHTML=''; },1500);
+    });
+  });
+}
+
+/* =========================================================================
+   VISTA SOCIOS — familias y cuota única (25€/familia, curso 2026-2027)
+   ========================================================================= */
+const CURSO_SOCIOS = '2026-2027';
+const CUOTA_SOCIOS = 25;
+let socFamilias = {};
+
+function normApellido(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
+
+function socTodosAlumnos(){
+  // students: {clase:{id:{...}}} → lista plana de alumnos activos
+  const out=[];
+  Object.values(students||{}).forEach(byId=>Object.values(byId||{}).forEach(s=>{ if(s.activo!==false) out.push(s); }));
+  return out;
+}
+
+function socAlumnosAsignados(){
+  const set=new Set();
+  Object.values(socFamilias).forEach(f=>Object.keys(f.alumnos||{}).forEach(id=>set.add(id)));
+  return set;
+}
+
+if(canAccess('socios')){
+  onValue(ref(db,'socios/familias'), snap=>{
+    socFamilias = snap.val() || {};
+    renderSociosAll();
+  });
+
+  function renderSociosStats(){
+    const familias = Object.values(socFamilias);
+    const pagadas = familias.filter(f=>f.pagado).length;
+    const recaudado = pagadas*CUOTA_SOCIOS;
+    const totalAlumnos = socTodosAlumnos().length;
+    const sinAsignar = totalAlumnos - socAlumnosAsignados().size;
+    $('#socStats').innerHTML = `
+      <div class="stat"><div class="n">${familias.length}</div><div class="l">Familias registradas</div></div>
+      <div class="stat"><div class="n" style="color:var(--emerald);">${pagadas}</div><div class="l">Han pagado</div></div>
+      <div class="stat"><div class="n" style="color:var(--rose);">${familias.length-pagadas}</div><div class="l">Sin pagar</div></div>
+      <div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">Recaudado este curso</div></div>
+      <div class="stat"><div class="n" style="color:${sinAsignar>0?'var(--amber)':'var(--emerald)'};">${sinAsignar}</div><div class="l">Alumnos sin familia</div></div>`;
+  }
+
+  function nombreAlumno(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
+
+  function renderSociosFamilias(filtro){
+    const f = normApellido(filtro||'');
+    const box = $('#socFamiliasList');
+    const entries = Object.entries(socFamilias).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||''));
+    const filtradas = !f ? entries : entries.filter(([id,fam])=>{
+      if(normApellido(fam.nombre).includes(f)) return true;
+      return Object.keys(fam.alumnos||{}).some(aid=>{
+        const s = socBuscarAlumnoPorId(aid);
+        return s && normApellido(nombreAlumno(s)).includes(f);
+      });
+    });
+    $('#socFamCount').textContent = entries.length ? `${entries.length}` : '';
+    box.innerHTML = filtradas.map(([id,fam])=>{
+      const hijos = Object.keys(fam.alumnos||{}).map(aid=>{
+        const s = socBuscarAlumnoPorId(aid);
+        return s ? `<span class="tag" style="background:var(--paper);color:var(--ink);">${nombreAlumno(s)} · ${s.clase}</span>` : `<span class="tag" style="background:var(--rose-bg);color:var(--rose-text);">${aid} (no encontrado)</span>`;
+      }).join(' ');
+      return `<div class="copyrow" style="align-items:flex-start;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <strong>${fam.nombre||'(sin nombre)'}</strong><br>
+          <div style="margin-top:.3rem;">${hijos || '<span class="small">Sin hijos vinculados</span>'}</div>
+        </div>
+        <div class="flexcol" style="align-items:flex-end;gap:.3rem;">
+          <label class="toggle"><input type="checkbox" class="soc-pagado" data-id="${id}" ${fam.pagado?'checked':''}><span class="slider"></span></label>
+          <span class="small">${fam.pagado ? 'Pagado ('+(fam.fechaPago?new Date(fam.fechaPago).toLocaleDateString('es-ES'):'')+')' : 'Sin pagar'}</span>
+          <button class="secondary soc-editar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Editar hijos</button>
+          <button class="danger soc-borrar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Borrar familia</button>
+        </div>
+      </div>`;
+    }).join('') || '<p class="small">No hay familias que coincidan.</p>';
+
+    $$('.soc-pagado').forEach(chk=>chk.addEventListener('change', async ()=>{
+      const id=chk.dataset.id;
+      if(chk.checked) await update(ref(db,'socios/familias/'+id), {pagado:true, cursoPagado:CURSO_SOCIOS, importe:CUOTA_SOCIOS, fechaPago:new Date().toISOString()});
+      else await update(ref(db,'socios/familias/'+id), {pagado:false, fechaPago:null});
+    }));
+    $$('.soc-borrar').forEach(btn=>btn.addEventListener('click', async ()=>{
+      if(!confirm('¿Borrar esta familia? Los alumnos quedarán sin familia asignada.')) return;
+      await remove(ref(db,'socios/familias/'+btn.dataset.id));
+    }));
+    $$('.soc-editar').forEach(btn=>btn.addEventListener('click', ()=>socEditarFamilia(btn.dataset.id)));
+  }
+
+  function socBuscarAlumnoPorId(id){
+    for(const byId of Object.values(students||{})){ if(byId[id]) return byId[id]; }
+    return null;
+  }
+
+  async function socEditarFamilia(id){
+    const fam = socFamilias[id];
+    const actuales = new Set(Object.keys(fam?.alumnos||{}));
+    const todos = socTodosAlumnos().sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
+    const listado = todos.map(s=>`${actuales.has(s.id)?'✓ ':'  '}${s.id} · ${nombreAlumno(s)} · ${s.clase}`).join('\n');
+    const resp = prompt('Escribe los ID (ALU-XXXX) separados por comas, de los alumnos de esta familia.\n\nListado (✓ = ya está):\n'+listado, [...actuales].join(', '));
+    if(resp===null) return;
+    const nuevos = resp.split(',').map(s=>s.trim()).filter(Boolean);
+    const bad = nuevos.filter(x=>!socBuscarAlumnoPorId(x));
+    if(bad.length){ alert('No reconozco estos ID, revisa: '+bad.join(', ')); return; }
+    const alumnosObj={}; nuevos.forEach(id2=>alumnosObj[id2]=true);
+    await update(ref(db,'socios/familias/'+id), {alumnos:alumnosObj});
+  }
+
+  function renderSociosAll(){ renderSociosStats(); renderSociosFamilias($('#socBuscar')?.value); }
+  $('#socBuscar').addEventListener('input', ()=>renderSociosFamilias($('#socBuscar').value));
+
+  $('#btnSocSugerir').addEventListener('click', ()=>{
+    const asignados = socAlumnosAsignados();
+    const libres = socTodosAlumnos().filter(s=>!asignados.has(s.id));
+    const grupos = {};
+    libres.forEach(s=>{
+      const key = normApellido(s.apellidos) || '(sin apellidos)_'+s.id;
+      (grupos[key] = grupos[key] || []).push(s);
+    });
+    const lista = Object.values(grupos).sort((a,b)=>(a[0].apellidos||'').localeCompare(b[0].apellidos||''));
+    const box = $('#socSugerencias');
+    $('#socSugCount').textContent = lista.length ? `${lista.length}` : '';
+    if(!lista.length){ box.innerHTML = '<p class="small">Todos los alumnos activos ya tienen una familia asignada.</p>'; return; }
+    box.innerHTML = lista.map((grupo,gi)=>`
+      <div class="card" style="background:var(--paper);margin-bottom:.6rem;" data-grupo="${gi}">
+        <input type="text" class="sug-nombre" value="${grupo[0].apellidos||''}" placeholder="Nombre de familia" style="margin-bottom:.5rem;">
+        <div class="sug-miembros">${grupo.map(s=>`<span class="tag sug-miembro" data-grupo="${gi}" data-id="${s.id}" style="background:#fff;color:var(--ink);border:1px solid var(--line);cursor:pointer;">${nombreAlumno(s)} · ${s.clase} ✕</span>`).join(' ')}</div>
+      </div>`).join('') + `<button id="btnSocConfirmarSugerencias" style="margin-top:.4rem;">Crear estas ${lista.length} familias</button><span id="socSugStatus" class="small"></span>`;
+
+    const gruposState = lista.map(g=>g.map(s=>s.id));
+    box.querySelectorAll('.sug-miembro').forEach(tag=>tag.addEventListener('click', ()=>{
+      const gi=+tag.dataset.grupo, id2=tag.dataset.id;
+      gruposState[gi] = gruposState[gi].filter(x=>x!==id2);
+      tag.remove();
+    }));
+    $('#btnSocConfirmarSugerencias').addEventListener('click', async ()=>{
+      const st=$('#socSugStatus'); st.textContent='Creando…';
+      const nombres = [...box.querySelectorAll('.sug-nombre')].map(i=>i.value.trim());
+      const payload={};
+      gruposState.forEach((ids,gi)=>{
+        if(!ids.length) return; // grupo vaciado del todo: se omite
+        const key = push(ref(db,'socios/familias')).key;
+        const alumnosObj={}; ids.forEach(id2=>alumnosObj[id2]=true);
+        payload['socios/familias/'+key] = { nombre: nombres[gi]||'Familia', alumnos: alumnosObj, pagado:false, cursoPagado:null, fechaPago:null, importe:CUOTA_SOCIOS };
+      });
+      await update(ref(db), payload);
+      st.textContent='Creadas ✓'; box.innerHTML='';
+      $('#socSugCount').textContent='';
     });
   });
 }
