@@ -724,20 +724,51 @@ function flatStudents(){
   return students && !Array.isArray(students) ? students : {};
 }
 
-const studentsRef = (rol==='profesor'||rol==='admin'||rol==='monitora') ? ref(db,'students') : null;
-if(studentsRef) onValue(studentsRef, snap=>{
-  const raw = snap.val() || {};
-  students = groupStudentsByClass(raw);
-  if(rol==='profesor' && claseParam) renderProfesorList();
-  if(rol==='monitora') renderMonitoraList();
-  if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
-});
+// admin y monitora ven la colección entera (igual que antes); profesor solo puede leer su propia
+// clase, así que primero lee la lista de IDs de roster_by_clase y luego cada alumno por su ID.
+if(rol==='admin' || rol==='monitora'){
+  onValue(ref(db,'students'), snap=>{
+    const raw = snap.val() || {};
+    students = groupStudentsByClass(raw);
+    if(rol==='monitora') renderMonitoraList();
+    if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
+  });
+} else if(rol==='profesor' && claseParam){
+  onValue(ref(db,'roster_by_clase/'+claseParam), rosterSnap=>{
+    const ids = Object.keys(rosterSnap.val() || {});
+    profesorRosterIds = ids;
+    students = {[claseParam]: {}};
+    ids.forEach(id=>{
+      onValue(ref(db,'students/'+id), snap=>{
+        if(!snap.exists()){ delete students[claseParam][id]; }
+        else { const s=snap.val(); if(s.activo!==false) students[claseParam][id] = {...s, id:s.id||id}; else delete students[claseParam][id]; }
+        renderProfesorList();
+      });
+    });
+    activeDates.forEach(date => ids.forEach(id => listenAttendanceForStudent(date, id)));
+    if(ids.length===0) renderProfesorList();
+  });
+}
 
+let profesorRosterIds = [];
+function listenAttendanceForStudent(date, id){
+  onValue(ref(db, `attendance/${date}/${id}`), snap=>{
+    if(!attendanceCache[date]) attendanceCache[date] = {};
+    attendanceCache[date][id] = snap.val() || null;
+    if(!snap.exists()) delete attendanceCache[date][id];
+    renderProfesorList(); renderProfesorMenu();
+  });
+}
 function listenAttendanceForDate(date){
-  // Asistencia plana: attendance/AAAA-MM-DD/ALU-0001
+  if(rol==='profesor'){
+    // Asistencia restringida a los alumnos de la propia clase, leída uno a uno.
+    if(!attendanceCache[date]) attendanceCache[date] = {};
+    profesorRosterIds.forEach(id => listenAttendanceForStudent(date, id));
+    return;
+  }
+  // admin y monitora: asistencia plana, un único listener por fecha: attendance/AAAA-MM-DD/ALU-0001
   onValue(ref(db, `attendance/${date}`), snap=>{
     attendanceCache[date] = snap.val() || {};
-    if(rol==='profesor' && claseParam) { renderProfesorList(); renderProfesorMenu(); }
     if(rol==='monitora') renderMonitoraList();
     if(rol==='admin'){ renderAdminDayStats(); }
   });
@@ -968,6 +999,7 @@ if(rol==='monitora'){
     const date = $('#monitoraDate').value || todayStr();
     const newId = `EXTRA-${Date.now()}`;
     await set(ref(db, `students/${newId}`), { id:newId, nombre, apellidos:'', clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
+    await set(ref(db, `roster_by_clase/${clase}/${newId}`), true);
     await update(ref(db, `attendance/${date}/${newId}`), { marcaProfesor:true, confirmadoMonitora:true, horaMarcaProfesor:new Date().toISOString() });
   });
 }
@@ -1334,6 +1366,7 @@ async function syncOfficialRoster(){
       activo:existing.activo!==false,
       origen:'matricula-2026-2027'
     };
+    payload[`roster_by_clase/${o.clase}/${o.id}`]=true;
 
     if(found && found.oldId!==o.id){
       usedOld.add(found.oldId);
@@ -1343,6 +1376,9 @@ async function syncOfficialRoster(){
         if(oldAtt) payload[`attendance/${date}/${found.oldId}`]=null;
       }
       payload[`students/${found.oldId}`]=null;
+      if(existing.clase) payload[`roster_by_clase/${existing.clase}/${found.oldId}`]=null;
+    } else if(existing.clase && existing.clase!==o.clase){
+      payload[`roster_by_clase/${existing.clase}/${o.id}`]=null;
     }
   }
 
@@ -1413,7 +1449,10 @@ async function importRows(rows){
       activo: true
     };
     if(!classesList.includes(clase)) classesList.push(clase);
+    const claseAnterior = existing[id]?.clase;
     await set(ref(db, `students/${id}`), data);
+    await set(ref(db, `roster_by_clase/${clase}/${id}`), true);
+    if(claseAnterior && claseAnterior!==clase) await remove(ref(db, `roster_by_clase/${claseAnterior}/${id}`));
     count++;
   }
   await set(ref(db,'config/classes'), classesList);
@@ -1494,6 +1533,7 @@ function renderAdminStudentsTable(){
       const tr = btn.closest('tr');
       if(!confirm('¿Borrar a este alumno de la lista?')) return;
       await remove(ref(db, `students/${tr.dataset.id}`));
+      await remove(ref(db, `roster_by_clase/${tr.dataset.class}/${tr.dataset.id}`));
     });
   });
 }
