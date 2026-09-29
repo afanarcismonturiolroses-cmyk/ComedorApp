@@ -24,3 +24,4 @@ la fecha, quién eres y qué has cambiado.
 ## Historial de cambios
 - 2026-09-29, Claude (chat): migración de alumnado/asistencia a estructura plana por ALU-XXXX +
   roster_by_clase. Commit `16b87bba` en index.html.
+- 2026-09-29, Cowork: publicadas las reglas para students/ALU-XXXX plano + roster_by_clase.
