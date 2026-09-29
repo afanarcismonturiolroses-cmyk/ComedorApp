@@ -414,9 +414,9 @@ canvas{max-width:100%;}
     </div>
 
     <div class="card" id="sec-tes-import">
-      <h2>Importar extracto (CSV)</h2>
-      <p class="small">Sube el CSV del banco. Antes de guardar nada podrás revisar las filas detectadas.</p>
-      <input type="file" id="fileExtracto" accept=".csv,text/csv">
+      <h2>Importar extracto</h2>
+      <p class="small">Sube el extracto del banco en Excel o CSV. Antes de guardar nada podrás revisar las filas detectadas.</p>
+      <input type="file" id="fileExtracto">
       <div id="importPreview"></div>
     </div>
 
@@ -1135,8 +1135,17 @@ if(canAccess('tesoreria')){
     const file = e.target.files[0]; if(!file) return;
     const box = $('#importPreview');
     box.innerHTML = '<p class="small">Leyendo archivo…</p>';
-    const text = await file.text();
-    const rows = parseCSVtext(text);
+    let rows;
+    if(/\.(xlsx|xls)$/i.test(file.name)){
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const p2 = n => String(n).padStart(2,'0');
+      rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''})
+        .map(r=>r.map(c=> (c && typeof c.getFullYear==='function') ? `${p2(c.getDate())}/${p2(c.getMonth()+1)}/${c.getFullYear()}` : (c==null?'':String(c))));
+    } else {
+      rows = parseCSVtext(await file.text());
+    }
     if(rows.length < 2){ box.innerHTML = '<p class="small">No se encontraron filas de datos.</p>'; return; }
     const header = rows[0];
     const idxFecha = detectColTes(header, ['fecha','data']);
@@ -1146,11 +1155,9 @@ if(canAccess('tesoreria')){
       box.innerHTML = '<p class="small">No se reconocen las columnas de fecha, concepto e importe en este archivo. Cabecera encontrada: '+header.join(' · ')+'</p>';
       return;
     }
-    tesImportRows = rows.slice(1).map(r=>({
-      fecha: parseFechaEs(r[idxFecha]),
-      concepto: String(r[idxConcepto]||'').trim(),
-      importe: parseImporteEs(r[idxImporte])
-    })).filter(r=>r.fecha && r.concepto && !isNaN(r.importe));
+    tesImportRows = rows.slice(1).map(r=>{
+      return { fecha: parseFechaEs(r[idxFecha]), concepto: String(r[idxConcepto]||'').trim(), importe: parseImporteEs(r[idxImporte]) };
+    }).filter(r=>r.fecha && r.concepto && !isNaN(r.importe));
     const validas = tesImportRows.length, totales = rows.length-1;
     box.innerHTML = `
       <p class="small">${validas} de ${totales} filas reconocidas. Revisa antes de guardar:</p>
