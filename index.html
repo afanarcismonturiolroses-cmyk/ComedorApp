@@ -562,6 +562,15 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <div id="socFamiliasList" style="margin-top:.6rem;"></div>
       </div>
     </details>
+
+    <details class="card" id="sec-soc-fianza">
+      <summary>Fianza de libros (6è Primària) <span class="count" id="fzCount"></span></summary>
+      <div class="details-body">
+        <p class="small">30&nbsp;€ por alumno de 6è. Se devuelve el curso que viene.</p>
+        <div class="grid-stats" id="fzStats"></div>
+        <div id="fzList" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
   </section>
 
   </div>
@@ -733,7 +742,8 @@ const AREAS = {
     items: [
       ['#sec-soc-resumen','Resumen'],
       ['#sec-soc-sugerencias','Crear familias'],
-      ['#sec-soc-familias','Familias']
+      ['#sec-soc-familias','Familias'],
+      ['#sec-soc-fianza','Fianza de libros']
     ]
   }
 };
@@ -1573,8 +1583,50 @@ if(canAccess('socios')){
     await update(ref(db,'socios/familias/'+id), {alumnos:alumnosObj});
   }
 
-  function renderSociosAll(){ renderSociosStats(); renderSociosFamilias($('#socBuscar')?.value); }
+  function renderSociosAll(){ renderSociosStats(); renderSociosFamilias($('#socBuscar')?.value); renderFianzaLibros(); }
   $('#socBuscar').addEventListener('input', ()=>renderSociosFamilias($('#socBuscar').value));
+
+  /* -------- Fianza de libros (30€, solo 6è Primària, se devuelve el curso siguiente) -------- */
+  let fzDatos = {};
+  onValue(ref(db,'socios/fianza_libros'), snap=>{ fzDatos = snap.val() || {}; renderFianzaLibros(); });
+
+  function renderFianzaLibros(){
+    const box=$('#fzList'), stBox=$('#fzStats'); if(!box) return;
+    const alumnos6e = socTodosAlumnos().filter(s=>s.clase==='6è Primària').sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
+    const pagados = alumnos6e.filter(s=>fzDatos[s.id]?.pagado).length;
+    const devueltos = alumnos6e.filter(s=>fzDatos[s.id]?.devuelto).length;
+    $('#fzCount').textContent = alumnos6e.length ? `${pagados}/${alumnos6e.length}` : '';
+    stBox.innerHTML = `
+      <div class="stat"><div class="n">${alumnos6e.length}</div><div class="l">Alumnos de 6è</div></div>
+      <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Fianza pagada</div></div>
+      <div class="stat"><div class="n" style="color:var(--rose);">${alumnos6e.length-pagados}</div><div class="l">Sin pagar</div></div>
+      <div class="stat"><div class="n">${devueltos}</div><div class="l">Ya devueltas</div></div>`;
+    if(!alumnos6e.length){ box.innerHTML='<p class="small">No hay alumnos en 6è Primària todavía.</p>'; return; }
+    box.innerHTML = alumnos6e.map(s=>{
+      const f = fzDatos[s.id]||{};
+      return `<div class="copyrow">
+        <span>${nombreAlumno(s)}</span>
+        <div class="row" style="gap:1rem;">
+          <label class="small" style="display:flex;align-items:center;gap:.3rem;">
+            <label class="toggle"><input type="checkbox" class="fz-pagado" data-id="${s.id}" ${f.pagado?'checked':''}><span class="slider"></span></label>Pagada
+          </label>
+          <label class="small" style="display:flex;align-items:center;gap:.3rem;">
+            <label class="toggle"><input type="checkbox" class="fz-devuelto" data-id="${s.id}" ${f.devuelto?'checked':''} ${!f.pagado?'disabled':''}><span class="slider"></span></label>Devuelta
+          </label>
+        </div>
+      </div>`;
+    }).join('');
+    $$('.fz-pagado').forEach(chk=>chk.addEventListener('change', async ()=>{
+      const id=chk.dataset.id;
+      if(chk.checked) await update(ref(db,'socios/fianza_libros/'+id), {pagado:true, importe:30, fechaPago:new Date().toISOString(), curso:CURSO_SOCIOS});
+      else await update(ref(db,'socios/fianza_libros/'+id), {pagado:false, fechaPago:null, devuelto:false, fechaDevolucion:null});
+    }));
+    $$('.fz-devuelto').forEach(chk=>chk.addEventListener('change', async ()=>{
+      const id=chk.dataset.id;
+      if(chk.checked) await update(ref(db,'socios/fianza_libros/'+id), {devuelto:true, fechaDevolucion:new Date().toISOString()});
+      else await update(ref(db,'socios/fianza_libros/'+id), {devuelto:false, fechaDevolucion:null});
+    }));
+  }
 
   $('#btnSocSugerir').addEventListener('click', ()=>{
     const asignados = socAlumnosAsignados();
