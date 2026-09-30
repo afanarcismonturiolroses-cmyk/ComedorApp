@@ -384,12 +384,16 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <div class="dash-col">
           <h3>🍽️ Menú de hoy</h3>
           <div id="dashMenuHoy"></div>
-          <p class="small" style="margin-top:.8rem;color:var(--muted);">🕑 Próximamente aquí: acogida matinal, extraescolares y Afacasal de hoy — en cuanto construyamos esos módulos.</p>
         </div>
         <div class="dash-col">
           <h3>⚠️ Alergias — quién come hoy</h3>
           <div id="dashAlergiasHoy"></div>
         </div>
+      </div>
+
+      <div class="dash-col" style="margin-top:1rem;">
+        <h3>📅 Próximos eventos</h3>
+        <div id="dashProximosEventos"></div>
       </div>
 
       <div class="dash-quick">
@@ -410,7 +414,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <p class="small">Crea la cuenta en Firebase Console → Authentication → Users → Add user. Copia su UID y asígnale aquí el rol.</p>
       <div class="flexcol">
         <input id="rolUid" placeholder="UID del usuario">
-        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="socios">Familias y socios</option><option value="acogida">Acogida matinal</option><option value="extraescolares">Extraescolares</option><option value="casal">Afacasal</option><option value="admin">Administración</option></select>
+        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="socios">Familias y socios</option><option value="acogida">Acogida matinal</option><option value="extraescolares">Extraescolares</option><option value="casal">Afacasal</option><option value="comunicacion">Comunicación</option><option value="admin">Administración</option></select>
         <div id="rolClaseBox"><select id="rolClase"></select></div>
         <button id="btnGuardarRol">Guardar rol</button>
         <span id="rolStatus" class="small"></span>
@@ -717,6 +721,36 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     </details>
   </section>
 
+  <!-- ============ VISTA COMUNICACIÓN (calendario + tienda) ============ -->
+  <section id="view-comunicacion" class="hidden">
+    <div class="card" id="sec-com-eventos">
+      <h2>📅 Calendario de eventos</h2>
+      <div class="flexcol" id="comEventoForm">
+        <input type="text" id="comEvTitulo" placeholder="Título del evento">
+        <div class="row">
+          <input type="date" id="comEvFecha" style="flex:1;">
+          <input type="text" id="comEvLugar" placeholder="Lugar (opcional)" style="flex:1;">
+        </div>
+        <textarea id="comEvDescripcion" placeholder="Descripción (opcional)" rows="2"></textarea>
+        <button id="btnComEvAdd">Añadir evento</button>
+      </div>
+      <div id="comEventosLista" style="margin-top:1rem;"></div>
+    </div>
+
+    <div class="card" id="sec-com-tienda">
+      <h2>🛒 Tienda</h2>
+      <div class="flexcol" id="comTiendaForm">
+        <input type="text" id="comTnombre" placeholder="Nombre del artículo">
+        <div class="row">
+          <input type="number" id="comTprecio" placeholder="Precio (€)" step="0.01" min="0" style="flex:1;">
+          <input type="text" id="comTdescripcion" placeholder="Descripción (opcional)" style="flex:2;">
+        </div>
+        <button id="btnComTAdd">Añadir artículo</button>
+      </div>
+      <div id="comTiendaLista" style="margin-top:1rem;"></div>
+    </div>
+  </section>
+
   </div>
 
 </main>
@@ -853,7 +887,7 @@ const rol = window.__ROL;
 const claseParam = window.__CLASE;
 
 function showSection(id, title, subtitle){
-  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal'].forEach(v=>{
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal','view-comunicacion'].forEach(v=>{
     $('#'+v).classList.toggle('hidden', v!==id);
   });
   $('#pageTitle').textContent = title;
@@ -905,6 +939,10 @@ const AREAS = {
   casal: {
     view: 'view-casal', icon: '⛺', label: 'Afacasal', subtitle: 'Alumnos inscritos y pago',
     items: [['#sec-casal-resumen','Resumen'],['#sec-casal-importar','Importar inscritos'],['#sec-casal-lista','Inscritos']]
+  },
+  comunicacion: {
+    view: 'view-comunicacion', icon: '📣', label: 'Comunicación', subtitle: 'Calendario de eventos y tienda',
+    items: [['#sec-com-eventos','Calendario'],['#sec-com-tienda','Tienda']]
   }
 };
 // El rol admin es universal: tiene acceso a cualquier área registrada arriba,
@@ -2087,6 +2125,86 @@ if(canAccess('socios')){
 crearModuloServicio({ key:'acogida', path:'acogida/inscripciones', fileInputId:'fileAcogidaInscritos', label:'Acogida matinal', campo:null });
 crearModuloServicio({ key:'extraescolares', path:'extraescolares/inscripciones', fileInputId:'fileExtraescolaresInscritos', label:'Extraescolares', campo:{clave:'actividad',etiqueta:'Actividad'} });
 crearModuloServicio({ key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal', campo:{clave:'turno',etiqueta:'Turno'} });
+
+/* =========================================================================
+   VISTA COMUNICACIÓN — calendario de eventos y tienda
+   ========================================================================= */
+if(canAccess('comunicacion')){
+  let comEventos = {}, comTienda = {};
+  $('#comEventosLista').innerHTML = skelRows(2);
+  $('#comTiendaLista').innerHTML = skelRows(2);
+
+  function renderEventosProximos(){
+    const box = $('#dashProximosEventos'); if(!box) return;
+    const hoy = todayStr();
+    const proximos = Object.entries(comEventos)
+      .filter(([id,e])=>e.fecha>=hoy)
+      .sort((a,b)=>a[1].fecha.localeCompare(b[1].fecha))
+      .slice(0,3);
+    box.innerHTML = proximos.length
+      ? proximos.map(([id,e])=>`<div class="dash-alerta"><span><strong>${e.titulo}</strong>${e.lugar?' · '+e.lugar:''}</span><span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</span></div>`).join('')
+      : '<p class="small">No hay eventos próximos programados.</p>';
+  }
+
+  function renderEventos(){
+    const lista = Object.entries(comEventos).sort((a,b)=>b[1].fecha.localeCompare(a[1].fecha));
+    $('#comEventosLista').innerHTML = lista.map(([id,e])=>`
+      <div class="copyrow" style="align-items:flex-start;">
+        <div>
+          <strong>${e.titulo}</strong> <span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</span>
+          ${e.lugar?`<div class="small">📍 ${e.lugar}</div>`:''}
+          ${e.descripcion?`<div class="small" style="margin-top:.2rem;">${e.descripcion}</div>`:''}
+        </div>
+        <button class="danger com-ev-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Borrar</button>
+      </div>`).join('') || '<p class="small">Sin eventos todavía.</p>';
+    $$('.com-ev-borrar').forEach(btn=>btn.addEventListener('click', async ()=>{
+      if(!confirm('¿Borrar este evento?')) return;
+      await remove(ref(db,'eventos/'+btn.dataset.id));
+    }));
+    renderEventosProximos();
+  }
+
+  function renderTienda(){
+    const lista = Object.entries(comTienda).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||''));
+    $('#comTiendaLista').innerHTML = lista.map(([id,it])=>`
+      <div class="copyrow">
+        <div>
+          <strong>${it.nombre}</strong> · ${euro(it.precio)}
+          ${it.descripcion?`<div class="small">${it.descripcion}</div>`:''}
+        </div>
+        <div class="row" style="gap:.6rem;">
+          <label class="toggle"><input type="checkbox" class="com-t-activo" data-id="${id}" ${it.activo!==false?'checked':''}><span class="slider"></span></label>
+          <button class="danger com-t-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Borrar</button>
+        </div>
+      </div>`).join('') || '<p class="small">Sin artículos todavía.</p>';
+    $$('.com-t-activo').forEach(chk=>chk.addEventListener('change', async ()=>{
+      await update(ref(db,'tienda/'+chk.dataset.id), {activo:chk.checked});
+    }));
+    $$('.com-t-borrar').forEach(btn=>btn.addEventListener('click', async ()=>{
+      if(!confirm('¿Borrar este artículo?')) return;
+      await remove(ref(db,'tienda/'+btn.dataset.id));
+    }));
+  }
+
+  onValue(ref(db,'eventos'), snap=>{ comEventos = snap.val()||{}; renderEventos(); });
+  onValue(ref(db,'tienda'), snap=>{ comTienda = snap.val()||{}; renderTienda(); });
+
+  $('#btnComEvAdd').addEventListener('click', async ()=>{
+    const titulo=$('#comEvTitulo').value.trim(), fecha=$('#comEvFecha').value;
+    if(!titulo || !fecha){ alert('Ponle un título y una fecha al evento.'); return; }
+    const newRef = push(ref(db,'eventos'));
+    await set(newRef, { titulo, fecha, lugar:$('#comEvLugar').value.trim(), descripcion:$('#comEvDescripcion').value.trim(), creadoEn:new Date().toISOString() });
+    $('#comEvTitulo').value=''; $('#comEvFecha').value=''; $('#comEvLugar').value=''; $('#comEvDescripcion').value='';
+  });
+
+  $('#btnComTAdd').addEventListener('click', async ()=>{
+    const nombre=$('#comTnombre').value.trim(), precio=Number($('#comTprecio').value);
+    if(!nombre || !(precio>=0)){ alert('Ponle un nombre y un precio al artículo.'); return; }
+    const newRef = push(ref(db,'tienda'));
+    await set(newRef, { nombre, precio, descripcion:$('#comTdescripcion').value.trim(), activo:true, creadoEn:new Date().toISOString() });
+    $('#comTnombre').value=''; $('#comTprecio').value=''; $('#comTdescripcion').value='';
+  });
+}
 
 
 /* =========================================================================
