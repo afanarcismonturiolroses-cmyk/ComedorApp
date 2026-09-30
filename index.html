@@ -120,6 +120,21 @@ ul.students li:last-child{border-bottom:none;}
 .skel-row{display:flex;gap:.6rem;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--line);}
 .skel-row:last-child{border-bottom:none;}
 .skel-stat{height:64px;border-radius:12px;}
+.dash-kpis{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:1rem;}
+.dash-kpi{background:var(--paper);border-radius:14px;padding:.9rem 1rem;}
+.dash-kpi .ico{font-size:1.3rem;}
+.dash-kpi .val{font-size:1.4rem;font-weight:700;margin-top:.2rem;}
+.dash-kpi .lbl{font-size:.75rem;color:var(--muted);margin-top:.1rem;}
+.dash-grid2{display:grid;gap:1rem;grid-template-columns:1fr;margin-top:1.3rem;}
+@media(min-width:760px){.dash-grid2{grid-template-columns:1fr 1fr;}}
+.dash-col{background:var(--paper);border-radius:14px;padding:1rem;}
+.dash-col h3{font-size:.95rem;margin-bottom:.6rem;}
+.dash-alerta{display:flex;justify-content:space-between;gap:.5rem;padding:.5rem 0;border-bottom:1px solid var(--line);font-size:.88rem;}
+.dash-alerta:last-child{border-bottom:none;}
+.dash-quick{margin-top:1.3rem;}
+.dash-quick h3{font-size:.95rem;margin-bottom:.5rem;}
+.dash-quick-btns{display:flex;gap:.5rem;flex-wrap:wrap;}
+.dash-quick-btns button{flex:1;min-width:150px;}
 .toggle{position:relative;width:52px;height:28px;flex:0 0 auto;}
 .toggle input{opacity:0;width:0;height:0;}
 .slider{position:absolute;inset:0;background:#CBD5E1;border-radius:999px;transition:.15s;}
@@ -362,7 +377,31 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
           <div class="small" id="semaforoDetalle" style="opacity:.9;"></div>
         </div>
       </div>
-      <div class="grid-stats" id="adminDayStats"></div>
+
+      <div class="dash-kpis" id="dashKpis"></div>
+
+      <div class="dash-grid2">
+        <div class="dash-col">
+          <h3>🍽️ Menú de hoy</h3>
+          <div id="dashMenuHoy"></div>
+          <p class="small" style="margin-top:.8rem;color:var(--muted);">🕑 Próximamente aquí: acogida matinal, extraescolares y Afacasal de hoy — en cuanto construyamos esos módulos.</p>
+        </div>
+        <div class="dash-col">
+          <h3>⚠️ Alergias — quién come hoy</h3>
+          <div id="dashAlergiasHoy"></div>
+        </div>
+      </div>
+
+      <div class="dash-quick">
+        <h3>Acciones rápidas</h3>
+        <div class="dash-quick-btns">
+          <button class="secondary" id="qaSync">📥 Sincronizar alumnado</button>
+          <button class="secondary" id="qaPago">💶 Registrar pago</button>
+          <button class="secondary" id="qaRoles">👤 Usuarios y roles</button>
+        </div>
+      </div>
+
+      <div class="grid-stats" id="adminDayStats" style="margin-top:1.2rem;"></div>
       <canvas id="chartDay" height="140"></canvas>
     </div>
 
@@ -973,7 +1012,7 @@ function mondayOf(dateStr){
 function listenMenu(week){
   onValue(ref(db,'menu/'+week), snap=>{
     menuWeekData=snap.exists()?snap.val():{};
-    if(rol==='admin') renderMenuEditor();
+    if(rol==='admin'){ renderMenuEditor(); renderDashboard(); }
     if(rol==='monitora') renderMonitoraMenu();
     if(rol==='profesor' && claseParam) renderProfesorMenu();
   });
@@ -1410,6 +1449,7 @@ if(canAccess('tesoreria')){
   onValue(ref(db,'tesoreria/movimientos'), snap=>{
     tesMovimientos = snap.val() || {};
     renderTesTodo();
+    renderDashboard();
   });
 
   $('#tesFecha').value = todayStr();
@@ -1549,10 +1589,12 @@ if(canAccess('socios')){
   onValue(ref(db,'directorio_alumnos'), snap=>{
     socDirectorio = snap.val() || {};
     renderSociosAll();
+    renderDashboard();
   });
   onValue(ref(db,'socios/familias'), snap=>{
     socFamilias = snap.val() || {};
     renderSociosAll();
+    renderDashboard();
   });
 
   function renderSociosStats(){
@@ -2193,6 +2235,53 @@ async function enviarProtocolo(date, total, color){
   }
 }
 
+function renderDashboard(){
+  if(rol!=='admin') return;
+  const date = $('#adminDate').value || todayStr();
+  const dayAtt = attendanceCache[date] || {};
+
+  // KPI: recaudación del mes (de los movimientos de tesorería ya cargados)
+  const mesActual = date.slice(0,7);
+  const ingresosMes = Object.values(tesMovimientos||{})
+    .filter(m=>m.importe>0 && String(m.fecha||'').slice(0,7)===mesActual)
+    .reduce((s,m)=>s+m.importe,0);
+
+  // KPI: familias sin pagar / alumnos sin familia (de socios, ya cargado)
+  const familias = Object.values(socFamilias||{});
+  const sinPagar = familias.filter(f=>!f.pagado).length;
+  const totalAlumnosDirectorio = Object.values(socDirectorio||{}).filter(s=>s.activo!==false).length;
+  const asignados = new Set(); familias.forEach(f=>Object.keys(f.alumnos||{}).forEach(id=>asignados.add(id)));
+  const sinFamilia = Math.max(0, totalAlumnosDirectorio - asignados.size);
+
+  const st = computeDayStats(date);
+  $('#dashKpis').innerHTML = `
+    <div class="dash-kpi"><div class="ico">🍽️</div><div class="val">${st.marcados}</div><div class="lbl">Marcados a comer hoy</div></div>
+    <div class="dash-kpi"><div class="ico">💶</div><div class="val">${euro(ingresosMes)}</div><div class="lbl">Recaudado este mes</div></div>
+    <div class="dash-kpi"><div class="ico">${sinPagar>0?'⚠️':'✅'}</div><div class="val" style="color:${sinPagar>0?'var(--rose)':'var(--emerald)'};">${sinPagar}</div><div class="lbl">Familias sin pagar la cuota</div></div>
+    <div class="dash-kpi"><div class="ico">👪</div><div class="val">${sinFamilia}</div><div class="lbl">Alumnos sin familia asignada</div></div>`;
+
+  // Alergias de quien come hoy (marcado por profesorado, cualquier estado)
+  const alergicos=[];
+  Object.keys(students||{}).forEach(clase=>{
+    Object.entries(students[clase]||{}).forEach(([id,s])=>{
+      if(dayAtt[id]?.marcaProfesor && s.alergias && s.alergias.trim()){
+        alergicos.push({nombre:`${s.nombre||''} ${s.apellidos||''}`.trim()||id, clase, alergias:s.alergias});
+      }
+    });
+  });
+  $('#dashAlergiasHoy').innerHTML = alergicos.length
+    ? alergicos.map(a=>`<div class="dash-alerta"><span><strong>${a.nombre}</strong><br><span class="small">${a.clase}</span></span><span class="pill pend">${a.alergias}</span></div>`).join('')
+    : '<p class="small">Nadie marcado hoy con alergias registradas.</p>';
+
+  // Menú de hoy (de menuWeekData, ya cargado)
+  const jsDay = new Date(date+'T00:00:00').getDay();
+  const idx = jsDay===0?7:jsDay;
+  const v = idx<=5 ? (menuWeekData||{})[String(idx)] : null;
+  $('#dashMenuHoy').innerHTML = idx>5
+    ? '<p class="small">Fin de semana, sin comedor.</p>'
+    : (v && v.plato ? `<p style="margin:0;">${v.plato}</p>${v.notas?`<p class="small" style="margin-top:.3rem;">${v.notas}</p>`:''}` : '<p class="small">Sin menú definido todavía para hoy.</p>');
+}
+
 function renderAdminDayStats(){
   if(rol!=='admin') return;
   const date = $('#adminDate').value || todayStr();
@@ -2212,6 +2301,7 @@ function renderAdminDayStats(){
     <div class="stat"><div class="n">${euro(st.ingresoEsporadicosNoBecados)}</div><div class="l">Ingreso esporádicos</div></div>
     <div class="stat"><div class="n">${euro(st.ingresoEsporadicosBecados)}</div><div class="l">Ingreso becados (esporádicos)</div></div>`;
 
+  renderDashboard();
   const labels = Object.keys(st.porClase);
   const dataMarcados = labels.map(c=>st.porClase[c].marcados);
   const dataConfirmados = labels.map(c=>st.porClase[c].confirmados);
@@ -2286,6 +2376,13 @@ async function renderMonthStats(){
 
 /* ---------------- Exportar Excel ---------------- */
 if(rol==='admin'){
+  $('#qaSync').addEventListener('click', ()=>{ $('#sec-import').scrollIntoView({behavior:'smooth'}); });
+  $('#qaRoles').addEventListener('click', ()=>{ $('#sec-enlaces').scrollIntoView({behavior:'smooth'}); });
+  $('#qaPago').addEventListener('click', ()=>{
+    goToArea('tesoreria');
+    setTimeout(()=>{ $('#sec-tes-manual')?.scrollIntoView({behavior:'smooth'}); $('#tesConcepto')?.focus(); }, 150);
+  });
+
   $('#btnExport').addEventListener('click', async ()=>{
     const yyyymm = $('#adminMonth').value || todayStr().slice(0,7);
     const wb = XLSX.utils.book_new();
