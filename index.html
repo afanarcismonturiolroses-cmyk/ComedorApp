@@ -410,7 +410,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <p class="small">Crea la cuenta en Firebase Console → Authentication → Users → Add user. Copia su UID y asígnale aquí el rol.</p>
       <div class="flexcol">
         <input id="rolUid" placeholder="UID del usuario">
-        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="socios">Familias y socios</option><option value="admin">Administración</option></select>
+        <select id="rolTipo"><option value="profesor">Profesor/a</option><option value="monitora">Monitora</option><option value="tesoreria">Tesorería</option><option value="socios">Familias y socios</option><option value="acogida">Acogida matinal</option><option value="extraescolares">Extraescolares</option><option value="casal">Afacasal</option><option value="admin">Administración</option></select>
         <div id="rolClaseBox"><select id="rolClase"></select></div>
         <button id="btnGuardarRol">Guardar rol</button>
         <span id="rolStatus" class="small"></span>
@@ -644,6 +644,78 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       </div>
     </details>
   </section>
+  <!-- ============ VISTA ACOGIDA ============ -->
+  <section id="view-acogida" class="hidden">
+    <div class="card" id="sec-acogida-resumen">
+      <h2>🌅 Acogida matinal</h2>
+      <div class="grid-stats" id="acogidaStats"></div>
+    </div>
+
+    <details class="card" id="sec-acogida-importar">
+      <summary>Importar inscritos</summary>
+      <div class="details-body">
+        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en acogida matinal. Se revisan los nombres antes de guardar nada.</p>
+        <input type="file" id="fileAcogidaInscritos">
+        <div id="acogidaImportPreview"></div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-acogida-lista" open>
+      <summary>Inscritos <span class="count" id="acogidaCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><input type="text" id="acogidaBuscar" placeholder="Buscar alumno…"></div>
+        <div id="acogidaLista" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
+  </section>
+  <!-- ============ VISTA EXTRAESCOLARES ============ -->
+  <section id="view-extraescolares" class="hidden">
+    <div class="card" id="sec-extraescolares-resumen">
+      <h2>🎨 Extraescolares</h2>
+      <div class="grid-stats" id="extraescolaresStats"></div>
+    </div>
+
+    <details class="card" id="sec-extraescolares-importar">
+      <summary>Importar inscritos</summary>
+      <div class="details-body">
+        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en extraescolares. Se revisan los nombres antes de guardar nada.</p>
+        <input type="file" id="fileExtraescolaresInscritos">
+        <div id="extraescolaresImportPreview"></div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-extraescolares-lista" open>
+      <summary>Inscritos <span class="count" id="extraescolaresCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><input type="text" id="extraescolaresBuscar" placeholder="Buscar alumno…"></div>
+        <div id="extraescolaresLista" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
+  </section>
+  <!-- ============ VISTA CASAL ============ -->
+  <section id="view-casal" class="hidden">
+    <div class="card" id="sec-casal-resumen">
+      <h2>⛺ Afacasal</h2>
+      <div class="grid-stats" id="casalStats"></div>
+    </div>
+
+    <details class="card" id="sec-casal-importar">
+      <summary>Importar inscritos</summary>
+      <div class="details-body">
+        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en afacasal. Se revisan los nombres antes de guardar nada.</p>
+        <input type="file" id="fileCasalInscritos">
+        <div id="casalImportPreview"></div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-casal-lista" open>
+      <summary>Inscritos <span class="count" id="casalCount"></span></summary>
+      <div class="details-body">
+        <div class="row"><input type="text" id="casalBuscar" placeholder="Buscar alumno…"></div>
+        <div id="casalLista" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
+  </section>
 
   </div>
 
@@ -781,7 +853,7 @@ const rol = window.__ROL;
 const claseParam = window.__CLASE;
 
 function showSection(id, title, subtitle){
-  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios'].forEach(v=>{
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal'].forEach(v=>{
     $('#'+v).classList.toggle('hidden', v!==id);
   });
   $('#pageTitle').textContent = title;
@@ -821,6 +893,18 @@ const AREAS = {
       ['#sec-soc-importar','Importar pagos'],
       ['#sec-soc-fianza','Fianza de libros']
     ]
+  },
+  acogida: {
+    view: 'view-acogida', icon: '🌅', label: 'Acogida matinal', subtitle: 'Alumnos inscritos y pago',
+    items: [['#sec-acogida-resumen','Resumen'],['#sec-acogida-importar','Importar inscritos'],['#sec-acogida-lista','Inscritos']]
+  },
+  extraescolares: {
+    view: 'view-extraescolares', icon: '🎨', label: 'Extraescolares', subtitle: 'Alumnos inscritos y pago',
+    items: [['#sec-extraescolares-resumen','Resumen'],['#sec-extraescolares-importar','Importar inscritos'],['#sec-extraescolares-lista','Inscritos']]
+  },
+  casal: {
+    view: 'view-casal', icon: '⛺', label: 'Afacasal', subtitle: 'Alumnos inscritos y pago',
+    items: [['#sec-casal-resumen','Resumen'],['#sec-casal-importar','Importar inscritos'],['#sec-casal-lista','Inscritos']]
   }
 };
 // El rol admin es universal: tiene acceso a cualquier área registrada arriba,
@@ -1567,6 +1651,126 @@ let socFamilias = {};
 
 function normApellido(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
 
+/* =========================================================================
+   MÓDULOS DE SERVICIO SIMPLES (Acogida matinal, Extraescolares, Afacasal)
+   Mismo patrón que Familias y socios: leen el directorio ligero de alumnos
+   (directorio_alumnos, sin alergias/becas) y su propia carpeta de inscritos.
+   ========================================================================= */
+function nombreCompleto(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
+
+function matchAlumnoPorTexto(directorio, texto){
+  const palabras = normApellido(texto).split(/\s+/).filter(Boolean);
+  if(!palabras.length) return [];
+  return Object.values(directorio).filter(s=>{
+    const nombreWords = normApellido(nombreCompleto(s)).split(/\s+/);
+    return palabras.every(p=>nombreWords.some(w=>w===p || (p.length>2 && (w.startsWith(p)||p.startsWith(w)))));
+  });
+}
+
+async function leerFilasArchivo(file){
+  if(/\.(xlsx|xls)$/i.test(file.name)){
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).map(r=>r.map(c=>c==null?'':String(c)));
+  }
+  return parseCSVtext(await file.text());
+}
+
+function nombresDeFilas(rows){
+  if(!rows.length) return [];
+  const header = rows[0];
+  const idxN = detectColTes(header, ['alumno','nombre']);
+  const idxA = detectColTes(header, ['apellido']);
+  const esCabecera = idxN>=0 || idxA>=0;
+  const datos = esCabecera ? rows.slice(1) : rows;
+  return datos.map(r=>{
+    if(idxN>=0 && idxA>=0) return `${r[idxN]||''} ${r[idxA]||''}`.trim();
+    if(idxN>=0) return String(r[idxN]||'').trim();
+    return r.map(c=>String(c||'')).join(' ').trim();
+  }).filter(Boolean);
+}
+
+function crearModuloServicio(cfg){
+  // cfg: { key, path, fileInputId, campo:{clave,etiqueta} | null }
+  if(!canAccess(cfg.key)) return;
+  let dir = {}, datos = {};
+
+  const statsEl=$('#'+cfg.key+'Stats'), listaEl=$('#'+cfg.key+'Lista'), countEl=$('#'+cfg.key+'Count'), buscarEl=$('#'+cfg.key+'Buscar');
+  statsEl.innerHTML = skelStats(3); listaEl.innerHTML = skelRows(3);
+
+  function render(){
+    const inscritosIds = Object.keys(datos).filter(id=>datos[id]?.inscrito);
+    const pagados = inscritosIds.filter(id=>datos[id].pagado).length;
+    statsEl.innerHTML = `
+      <div class="stat"><div class="n">${inscritosIds.length}</div><div class="l">Inscritos</div></div>
+      <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Pagados</div></div>
+      <div class="stat"><div class="n" style="color:var(--rose);">${inscritosIds.length-pagados}</div><div class="l">Sin pagar</div></div>`;
+    countEl.textContent = inscritosIds.length ? `${inscritosIds.length}` : '';
+
+    const filtro = normApellido(buscarEl?.value||'');
+    const filas = inscritosIds.map(id=>({id, s:dir[id], d:datos[id]}))
+      .filter(x=>x.s)
+      .filter(x=>!filtro || normApellido(nombreCompleto(x.s)).includes(filtro))
+      .sort((a,b)=>nombreCompleto(a.s).localeCompare(nombreCompleto(b.s)));
+
+    listaEl.innerHTML = filas.map(({id,s,d})=>{
+      const extra = cfg.campo ? ` · <span class="small">${d[cfg.campo.clave]||'—'}</span>` : '';
+      return `<div class="copyrow">
+        <span><strong>${nombreCompleto(s)}</strong> · ${s.clase}${extra}</span>
+        <div class="row" style="gap:.6rem;">
+          <label class="toggle"><input type="checkbox" class="sv-pagado" data-key="${cfg.key}" data-id="${id}" ${d.pagado?'checked':''}><span class="slider"></span></label>
+          <button class="danger sv-quitar" data-key="${cfg.key}" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+        </div>
+      </div>`;
+    }).join('') || '<p class="small">Nadie inscrito todavía. Importa una lista arriba.</p>';
+
+    $$('.sv-pagado').forEach(chk=>{ if(chk.dataset.key!==cfg.key) return; chk.onchange = async ()=>{
+      const id=chk.dataset.id;
+      if(chk.checked) await update(ref(db,cfg.path+'/'+id), {pagado:true, fechaPago:new Date().toISOString()});
+      else await update(ref(db,cfg.path+'/'+id), {pagado:false, fechaPago:null});
+    };});
+    $$('.sv-quitar').forEach(btn=>{ if(btn.dataset.key!==cfg.key) return; btn.onclick = async ()=>{
+      if(!confirm('¿Quitar a este alumno de '+cfg.label+'?')) return;
+      await remove(ref(db,cfg.path+'/'+btn.dataset.id));
+    };});
+  }
+
+  onValue(ref(db,'directorio_alumnos'), snap=>{ dir = snap.val()||{}; render(); });
+  onValue(ref(db,cfg.path), snap=>{ datos = snap.val()||{}; render(); });
+  if(buscarEl) buscarEl.addEventListener('input', render);
+
+  const fileInput = $('#'+cfg.fileInputId);
+  if(fileInput) fileInput.addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const box=$('#'+cfg.key+'ImportPreview'); box.innerHTML='<p class="small">Leyendo…</p>';
+    const nombres = nombresDeFilas(await leerFilasArchivo(file));
+    const aInscribir=[], sinMatch=[], ambiguos=[], yaInscritos=[];
+    nombres.forEach(n=>{
+      const cand = matchAlumnoPorTexto(dir, n);
+      if(cand.length===0){ sinMatch.push(n); return; }
+      if(cand.length>1){ ambiguos.push(n); return; }
+      const s=cand[0];
+      if(datos[s.id]?.inscrito){ yaInscritos.push(nombreCompleto(s)); return; }
+      aInscribir.push(s);
+    });
+    box.innerHTML = `
+      <p class="small">${aInscribir.length} alumno(s) se inscribirán en ${cfg.label}.</p>
+      ${sinMatch.length?`<p class="small" style="color:var(--rose-text);">No reconocidos (${sinMatch.length}): ${sinMatch.join(', ')}</p>`:''}
+      ${ambiguos.length?`<p class="small" style="color:var(--amber-text);">Nombre ambiguo, revisa a mano: ${ambiguos.join(', ')}</p>`:''}
+      ${yaInscritos.length?`<p class="small" style="color:var(--muted);">Ya estaban inscritos (${yaInscritos.length}): ${yaInscritos.join(', ')}</p>`:''}
+      ${aInscribir.length?`<button id="btnConfirmar${cfg.key}">Inscribir a estos ${aInscribir.length}</button><span id="status${cfg.key}" class="small"></span>`:''}`;
+    const btn=$('#btnConfirmar'+cfg.key);
+    if(btn) btn.addEventListener('click', async ()=>{
+      const st=$('#status'+cfg.key); st.textContent='Guardando…';
+      const payload={};
+      aInscribir.forEach(s=>{ payload[cfg.path+'/'+s.id]={ inscrito:true, pagado:false, fechaInscripcion:new Date().toISOString() }; });
+      await update(ref(db), payload);
+      st.textContent='Hecho ✓'; fileInput.value='';
+    });
+  });
+}
+
 // El rol socios (y admin cuando supervisa esta área) NO lee el registro completo de alumnos
 // (que incluye alergias, becas, tipo de pago): solo un directorio aparte con lo imprescindible
 // para agrupar familias — nombre, apellidos, clase. Se mantiene al día desde cada alta/baja/
@@ -1879,6 +2083,11 @@ if(canAccess('socios')){
     });
   });
 }
+
+crearModuloServicio({ key:'acogida', path:'acogida/inscripciones', fileInputId:'fileAcogidaInscritos', label:'Acogida matinal', campo:null });
+crearModuloServicio({ key:'extraescolares', path:'extraescolares/inscripciones', fileInputId:'fileExtraescolaresInscritos', label:'Extraescolares', campo:{clave:'actividad',etiqueta:'Actividad'} });
+crearModuloServicio({ key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal', campo:{clave:'turno',etiqueta:'Turno'} });
+
 
 /* =========================================================================
    VISTA ADMIN
