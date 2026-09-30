@@ -563,6 +563,21 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       </div>
     </details>
 
+    <details class="card" id="sec-soc-importar">
+      <summary>Importar pagos</summary>
+      <div class="details-body">
+        <h3>Cuota AFA pagada (25€/familia)</h3>
+        <p class="small">Sube una lista con el nombre de un alumno por familia que ya ha pagado. Con que aparezca uno, se marca pagada toda su familia.</p>
+        <input type="file" id="fileCuotaPagada">
+        <div id="cuotaPreview"></div>
+
+        <h3 style="margin-top:1.3rem;">Fianza de libros pagada (30€, solo 6è)</h3>
+        <p class="small">Sube una lista con los alumnos de 6è que ya han pagado. Cada uno paga la suya.</p>
+        <input type="file" id="fileFianzaPagada">
+        <div id="fianzaPreview"></div>
+      </div>
+    </details>
+
     <details class="card" id="sec-soc-fianza">
       <summary>Fianza de libros (6è Primària) <span class="count" id="fzCount"></span></summary>
       <div class="details-body">
@@ -743,6 +758,7 @@ const AREAS = {
       ['#sec-soc-resumen','Resumen'],
       ['#sec-soc-sugerencias','Crear familias'],
       ['#sec-soc-familias','Familias'],
+      ['#sec-soc-importar','Importar pagos'],
       ['#sec-soc-fianza','Fianza de libros']
     ]
   }
@@ -1545,15 +1561,18 @@ if(canAccess('socios')){
         const s = socBuscarAlumnoPorId(aid);
         return s ? `<span class="tag" style="background:var(--paper);color:var(--ink);">${nombreAlumno(s)} · ${s.clase}</span>` : `<span class="tag" style="background:var(--rose-bg);color:var(--rose-text);">${aid} (no encontrado)</span>`;
       }).join(' ');
+      const tutores = (fam.tutores||[]).map(t=>`<div class="small">👤 ${t.nombre||''}${t.parentesco?' ('+t.parentesco+')':''}${t.telefono?' · '+t.telefono:''}${t.email?' · '+t.email:''}</div>`).join('');
       return `<div class="copyrow" style="align-items:flex-start;flex-wrap:wrap;">
         <div style="flex:1;min-width:200px;">
           <strong>${fam.nombre||'(sin nombre)'}</strong><br>
           <div style="margin-top:.3rem;">${hijos || '<span class="small">Sin hijos vinculados</span>'}</div>
+          <div style="margin-top:.4rem;">${tutores || '<span class="small" style="color:var(--muted);">Sin datos de tutores todavía</span>'}</div>
         </div>
         <div class="flexcol" style="align-items:flex-end;gap:.3rem;">
           <label class="toggle"><input type="checkbox" class="soc-pagado" data-id="${id}" ${fam.pagado?'checked':''}><span class="slider"></span></label>
           <span class="small">${fam.pagado ? 'Pagado ('+(fam.fechaPago?new Date(fam.fechaPago).toLocaleDateString('es-ES'):'')+')' : 'Sin pagar'}</span>
           <button class="secondary soc-editar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Editar hijos</button>
+          <button class="secondary soc-tutores" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Editar tutores</button>
           <button class="danger soc-borrar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Borrar familia</button>
         </div>
       </div>`;
@@ -1569,6 +1588,7 @@ if(canAccess('socios')){
       await remove(ref(db,'socios/familias/'+btn.dataset.id));
     }));
     $$('.soc-editar').forEach(btn=>btn.addEventListener('click', ()=>socEditarFamilia(btn.dataset.id)));
+    $$('.soc-tutores').forEach(btn=>btn.addEventListener('click', ()=>socEditarTutores(btn.dataset.id)));
   }
 
   function socBuscarAlumnoPorId(id){ return socDirectorio[id] || null; }
@@ -1586,6 +1606,124 @@ if(canAccess('socios')){
     const alumnosObj={}; nuevos.forEach(id2=>alumnosObj[id2]=true);
     await update(ref(db,'socios/familias/'+id), {alumnos:alumnosObj});
   }
+
+  async function socEditarTutores(id){
+    const fam = socFamilias[id];
+    const actuales = fam?.tutores || [];
+    const texto = actuales.map(t=>`${t.nombre||''} | ${t.parentesco||''} | ${t.telefono||''} | ${t.email||''}`).join('\n');
+    const resp = prompt('Un tutor por línea, con este formato:\nNombre | Parentesco (madre/padre/tutor) | Teléfono | Email\n\nDeja una línea vacía para borrar un tutor.', texto);
+    if(resp===null) return;
+    const tutores = resp.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+      const [nombre,parentesco,telefono,email] = l.split('|').map(s=>(s||'').trim());
+      return {nombre:nombre||'', parentesco:parentesco||'', telefono:telefono||'', email:email||''};
+    }).filter(t=>t.nombre);
+    await update(ref(db,'socios/familias/'+id), {tutores});
+  }
+
+  /* -------- Importar listas de pago (cuota AFA por familia, fianza por alumno) -------- */
+  async function socLeerFilas(file){
+    if(/\.(xlsx|xls)$/i.test(file.name)){
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(ws, {header:1, defval:''}).map(r=>r.map(c=>c==null?'':String(c)));
+    }
+    return parseCSVtext(await file.text());
+  }
+
+  function socNombresDeArchivo(rows){
+    // Si hay cabecera reconocible (nombre/alumno/apellidos), la usa; si no, toma la primera columna de cada fila.
+    if(!rows.length) return [];
+    const header = rows[0];
+    const idxN = detectColTes(header, ['alumno','nombre']);
+    const idxA = detectColTes(header, ['apellido']);
+    const esCabecera = idxN>=0 || idxA>=0;
+    const datos = esCabecera ? rows.slice(1) : rows;
+    return datos.map(r=>{
+      if(idxN>=0 && idxA>=0) return `${r[idxN]||''} ${r[idxA]||''}`.trim();
+      if(idxN>=0) return String(r[idxN]||'').trim();
+      return r.map(c=>String(c||'')).join(' ').trim();
+    }).filter(Boolean);
+  }
+
+  function socMatch(texto){
+    const palabras = normApellido(texto).split(/\s+/).filter(Boolean);
+    if(!palabras.length) return [];
+    return socTodosAlumnos().filter(s=>{
+      const nombreWords = normApellido(nombreAlumno(s)).split(/\s+/);
+      return palabras.every(p=>nombreWords.some(w=>w===p || (p.length>2 && (w.startsWith(p)||p.startsWith(w)))));
+    });
+  }
+
+  $('#fileCuotaPagada').addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const box=$('#cuotaPreview'); box.innerHTML='<p class="small">Leyendo…</p>';
+    const nombres = socNombresDeArchivo(await socLeerFilas(file));
+    const familiasAMarcar = new Map(); // famId -> alumno que la identificó
+    const sinFamilia=[], sinMatch=[], ambiguos=[];
+    nombres.forEach(n=>{
+      const cand = socMatch(n);
+      if(cand.length===0){ sinMatch.push(n); return; }
+      if(cand.length>1){ ambiguos.push([n,cand]); return; }
+      const s = cand[0];
+      const fam = Object.entries(socFamilias).find(([id,f])=>f.alumnos && f.alumnos[s.id]);
+      if(!fam){ sinFamilia.push(n+' ('+s.id+')'); return; }
+      if(!familiasAMarcar.has(fam[0])) familiasAMarcar.set(fam[0], nombreAlumno(s));
+    });
+    box.innerHTML = `
+      <p class="small">${familiasAMarcar.size} familia(s) se marcarán como pagadas.</p>
+      ${sinMatch.length?`<p class="small" style="color:var(--rose-text);">No reconocidos (${sinMatch.length}): ${sinMatch.join(', ')}</p>`:''}
+      ${ambiguos.length?`<p class="small" style="color:var(--amber-text);">Nombre ambiguo, revisa a mano: ${ambiguos.map(a=>a[0]).join(', ')}</p>`:''}
+      ${sinFamilia.length?`<p class="small" style="color:var(--amber-text);">Sin familia creada todavía: ${sinFamilia.join(', ')}</p>`:''}
+      ${familiasAMarcar.size?`<button id="btnConfirmarCuota">Marcar estas ${familiasAMarcar.size} familias como pagadas</button><span id="cuotaStatus" class="small"></span>`:''}`;
+    const btn=$('#btnConfirmarCuota');
+    if(btn) btn.addEventListener('click', async ()=>{
+      const st=$('#cuotaStatus'); st.textContent='Guardando…';
+      const payload={};
+      familiasAMarcar.forEach((_nombre,famId)=>{
+        payload['socios/familias/'+famId+'/pagado']=true;
+        payload['socios/familias/'+famId+'/cursoPagado']=CURSO_SOCIOS;
+        payload['socios/familias/'+famId+'/importe']=CUOTA_SOCIOS;
+        payload['socios/familias/'+famId+'/fechaPago']=new Date().toISOString();
+      });
+      await update(ref(db), payload);
+      st.textContent='Hecho ✓'; $('#fileCuotaPagada').value='';
+    });
+  });
+
+  $('#fileFianzaPagada').addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const box=$('#fianzaPreview'); box.innerHTML='<p class="small">Leyendo…</p>';
+    const nombres = socNombresDeArchivo(await socLeerFilas(file));
+    const aMarcar=[], sinMatch=[], ambiguos=[], noSonDe6e=[];
+    nombres.forEach(n=>{
+      const cand = socMatch(n);
+      if(cand.length===0){ sinMatch.push(n); return; }
+      if(cand.length>1){ ambiguos.push(n); return; }
+      const s=cand[0];
+      if(s.clase!=='6è Primària'){ noSonDe6e.push(n+' ('+s.clase+')'); return; }
+      aMarcar.push(s);
+    });
+    box.innerHTML = `
+      <p class="small">${aMarcar.length} alumno(s) de 6è se marcarán con la fianza pagada.</p>
+      ${sinMatch.length?`<p class="small" style="color:var(--rose-text);">No reconocidos (${sinMatch.length}): ${sinMatch.join(', ')}</p>`:''}
+      ${ambiguos.length?`<p class="small" style="color:var(--amber-text);">Nombre ambiguo, revisa a mano: ${ambiguos.join(', ')}</p>`:''}
+      ${noSonDe6e.length?`<p class="small" style="color:var(--amber-text);">No son de 6è, se omiten: ${noSonDe6e.join(', ')}</p>`:''}
+      ${aMarcar.length?`<button id="btnConfirmarFianza">Marcar estos ${aMarcar.length} como pagados</button><span id="fianzaStatus" class="small"></span>`:''}`;
+    const btn=$('#btnConfirmarFianza');
+    if(btn) btn.addEventListener('click', async ()=>{
+      const st=$('#fianzaStatus'); st.textContent='Guardando…';
+      const payload={};
+      aMarcar.forEach(s=>{
+        payload['socios/fianza_libros/'+s.id+'/pagado']=true;
+        payload['socios/fianza_libros/'+s.id+'/importe']=30;
+        payload['socios/fianza_libros/'+s.id+'/curso']=CURSO_SOCIOS;
+        payload['socios/fianza_libros/'+s.id+'/fechaPago']=new Date().toISOString();
+      });
+      await update(ref(db), payload);
+      st.textContent='Hecho ✓'; $('#fileFianzaPagada').value='';
+    });
+  });
 
   function renderSociosAll(){ renderSociosStats(); renderSociosFamilias($('#socBuscar')?.value); renderFianzaLibros(); }
   $('#socBuscar').addEventListener('input', ()=>renderSociosFamilias($('#socBuscar').value));
