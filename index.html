@@ -870,13 +870,12 @@ function flatStudents(){
 
 // admin y monitora ven la colección entera (igual que antes); profesor solo puede leer su propia
 // clase, así que primero lee la lista de IDs de roster_by_clase y luego cada alumno por su ID.
-if(rol==='admin' || rol==='monitora' || rol==='socios'){
+if(rol==='admin' || rol==='monitora'){
   onValue(ref(db,'students'), snap=>{
     const raw = snap.val() || {};
     students = groupStudentsByClass(raw);
     if(rol==='monitora') renderMonitoraList();
     if(rol==='admin'){ renderAdminStudentsTable(); renderAdminDayStats(); }
-    if(canAccess('socios') && typeof renderSociosAll==='function') renderSociosAll();
   });
 } else if(rol==='profesor' && claseParam){
   onValue(ref(db,'roster_by_clase/'+claseParam), rosterSnap=>{
@@ -1145,6 +1144,7 @@ if(rol==='monitora'){
     const newId = `EXTRA-${Date.now()}`;
     await set(ref(db, `students/${newId}`), { id:newId, nombre, apellidos:'', clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
     await set(ref(db, `roster_by_clase/${clase}/${newId}`), true);
+    await set(ref(db, `directorio_alumnos/${newId}`), { id:newId, nombre, apellidos:'', clase, activo:true });
     await update(ref(db, `attendance/${date}/${newId}`), { marcaProfesor:true, confirmadoMonitora:true, horaMarcaProfesor:new Date().toISOString() });
   });
 }
@@ -1486,11 +1486,14 @@ let socFamilias = {};
 
 function normApellido(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
 
+// El rol socios (y admin cuando supervisa esta área) NO lee el registro completo de alumnos
+// (que incluye alergias, becas, tipo de pago): solo un directorio aparte con lo imprescindible
+// para agrupar familias — nombre, apellidos, clase. Se mantiene al día desde cada alta/baja/
+// sincronización de alumnado (busca `directorio_alumnos` en el resto del archivo).
+let socDirectorio = {};
+
 function socTodosAlumnos(){
-  // students: {clase:{id:{...}}} → lista plana de alumnos activos
-  const out=[];
-  Object.values(students||{}).forEach(byId=>Object.values(byId||{}).forEach(s=>{ if(s.activo!==false) out.push(s); }));
-  return out;
+  return Object.values(socDirectorio).filter(s=>s.activo!==false);
 }
 
 function socAlumnosAsignados(){
@@ -1500,6 +1503,10 @@ function socAlumnosAsignados(){
 }
 
 if(canAccess('socios')){
+  onValue(ref(db,'directorio_alumnos'), snap=>{
+    socDirectorio = snap.val() || {};
+    renderSociosAll();
+  });
   onValue(ref(db,'socios/familias'), snap=>{
     socFamilias = snap.val() || {};
     renderSociosAll();
@@ -1564,10 +1571,7 @@ if(canAccess('socios')){
     $$('.soc-editar').forEach(btn=>btn.addEventListener('click', ()=>socEditarFamilia(btn.dataset.id)));
   }
 
-  function socBuscarAlumnoPorId(id){
-    for(const byId of Object.values(students||{})){ if(byId[id]) return byId[id]; }
-    return null;
-  }
+  function socBuscarAlumnoPorId(id){ return socDirectorio[id] || null; }
 
   async function socEditarFamilia(id){
     const fam = socFamilias[id];
@@ -1806,6 +1810,7 @@ async function syncOfficialRoster(){
       origen:'matricula-2026-2027'
     };
     payload[`roster_by_clase/${o.clase}/${o.id}`]=true;
+    payload[`directorio_alumnos/${o.id}`]={ id:o.id, nombre:o.nombre, apellidos:o.apellidos||'', clase:o.clase, activo:existing.activo!==false };
 
     if(found && found.oldId!==o.id){
       usedOld.add(found.oldId);
@@ -1892,6 +1897,7 @@ async function importRows(rows){
     await set(ref(db, `students/${id}`), data);
     await set(ref(db, `roster_by_clase/${clase}/${id}`), true);
     if(claseAnterior && claseAnterior!==clase) await remove(ref(db, `roster_by_clase/${claseAnterior}/${id}`));
+    await set(ref(db, `directorio_alumnos/${id}`), { id, nombre:data.nombre, apellidos:data.apellidos||'', clase, activo:true });
     count++;
   }
   await set(ref(db,'config/classes'), classesList);
@@ -1974,6 +1980,7 @@ function renderAdminStudentsTable(){
       if(!confirm('¿Borrar a este alumno de la lista?')) return;
       await remove(ref(db, `students/${tr.dataset.id}`));
       await remove(ref(db, `roster_by_clase/${tr.dataset.class}/${tr.dataset.id}`));
+      await remove(ref(db, `directorio_alumnos/${tr.dataset.id}`));
     });
   });
 }
