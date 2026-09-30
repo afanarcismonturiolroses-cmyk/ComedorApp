@@ -1343,7 +1343,6 @@ if(rol==='monitora'){
     const newId = `EXTRA-${Date.now()}`;
     await set(ref(db, `students/${newId}`), { id:newId, nombre, apellidos:'', clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
     await set(ref(db, `roster_by_clase/${clase}/${newId}`), true);
-    await set(ref(db, `directorio_alumnos/${newId}`), { id:newId, nombre, apellidos:'', clase, activo:true });
     await update(ref(db, `attendance/${date}/${newId}`), { marcaProfesor:true, confirmadoMonitora:true, horaMarcaProfesor:new Date().toISOString() });
   });
 }
@@ -1692,7 +1691,7 @@ function normApellido(s){ return String(s||'').normalize('NFD').replace(/[\u0300
 /* =========================================================================
    MÓDULOS DE SERVICIO SIMPLES (Acogida matinal, Extraescolares, Afacasal)
    Mismo patrón que Familias y socios: leen el directorio ligero de alumnos
-   (directorio_alumnos, sin alergias/becas) y su propia carpeta de inscritos.
+   (students, aunque solo mostramos nombre/apellidos/clase) y su propia carpeta de inscritos.
    ========================================================================= */
 function nombreCompleto(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
 
@@ -1774,7 +1773,7 @@ function crearModuloServicio(cfg){
     };});
   }
 
-  onValue(ref(db,'directorio_alumnos'), snap=>{ dir = snap.val()||{}; render(); });
+  onValue(ref(db,'students'), snap=>{ dir = snap.val()||{}; render(); });
   onValue(ref(db,cfg.path), snap=>{ datos = snap.val()||{}; render(); });
   if(buscarEl) buscarEl.addEventListener('input', render);
 
@@ -1809,10 +1808,9 @@ function crearModuloServicio(cfg){
   });
 }
 
-// El rol socios (y admin cuando supervisa esta área) NO lee el registro completo de alumnos
-// (que incluye alergias, becas, tipo de pago): solo un directorio aparte con lo imprescindible
-// para agrupar familias — nombre, apellidos, clase. Se mantiene al día desde cada alta/baja/
-// sincronización de alumnado (busca `directorio_alumnos` en el resto del archivo).
+// El rol socios lee la misma colección de alumnos que el comedor (students), igual que
+// monitora. La interfaz de Socios simplemente no muestra alergias, becas ni tipo de pago,
+// solo nombre, apellidos y clase — pero técnicamente el rol sí puede leer esos campos.
 let socDirectorio = {};
 
 function socTodosAlumnos(){
@@ -1828,7 +1826,7 @@ function socAlumnosAsignados(){
 if(canAccess('socios')){
   $('#socFamiliasList').innerHTML = skelRows(3);
   $('#socStats').innerHTML = skelStats(3);
-  onValue(ref(db,'directorio_alumnos'), snap=>{
+  onValue(ref(db,'students'), snap=>{
     socDirectorio = snap.val() || {};
     renderSociosAll();
     renderDashboard();
@@ -2344,7 +2342,6 @@ async function syncOfficialRoster(){
       origen:'matricula-2026-2027'
     };
     payload[`roster_by_clase/${o.clase}/${o.id}`]=true;
-    payload[`directorio_alumnos/${o.id}`]={ id:o.id, nombre:o.nombre, apellidos:o.apellidos||'', clase:o.clase, activo:existing.activo!==false };
 
     if(found && found.oldId!==o.id){
       usedOld.add(found.oldId);
@@ -2431,7 +2428,6 @@ async function importRows(rows){
     await set(ref(db, `students/${id}`), data);
     await set(ref(db, `roster_by_clase/${clase}/${id}`), true);
     if(claseAnterior && claseAnterior!==clase) await remove(ref(db, `roster_by_clase/${claseAnterior}/${id}`));
-    await set(ref(db, `directorio_alumnos/${id}`), { id, nombre:data.nombre, apellidos:data.apellidos||'', clase, activo:true });
     count++;
   }
   await set(ref(db,'config/classes'), classesList);
@@ -2514,7 +2510,6 @@ function renderAdminStudentsTable(){
       if(!confirm('¿Borrar a este alumno de la lista?')) return;
       await remove(ref(db, `students/${tr.dataset.id}`));
       await remove(ref(db, `roster_by_clase/${tr.dataset.class}/${tr.dataset.id}`));
-      await remove(ref(db, `directorio_alumnos/${tr.dataset.id}`));
     });
   });
 }
