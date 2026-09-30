@@ -97,6 +97,13 @@ details.card{transition:box-shadow .2s ease;}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;}
 .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin:.6rem 0;}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:.7rem;text-align:center;}
+.stat.clickable{cursor:pointer;transition:background .15s,transform .1s;}
+.stat.clickable:hover{background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.1);}
+.stat.clickable:active{transform:scale(.97);}
+.filtro-chip{display:inline-flex;align-items:center;gap:.4em;background:var(--sky-800);color:#fff;
+  font-size:.8rem;font-weight:600;padding:.3em .7em .3em .9em;border-radius:999px;margin-bottom:.6rem;}
+.filtro-chip button{background:none;border:none;color:#fff;padding:0;font-size:1rem;line-height:1;opacity:.85;}
+.filtro-chip button:hover{opacity:1;filter:none;}
 .stat .n{font-size:1.5rem;font-weight:700;color:var(--sky-900);}
 .stat .l{font-size:.78rem;color:var(--muted);}
 ul.students{list-style:none;margin:0;padding:0;}
@@ -1844,19 +1851,30 @@ if(canAccess('socios')){
     const totalAlumnos = socTodosAlumnos().length;
     const sinAsignar = totalAlumnos - socAlumnosAsignados().size;
     $('#socStats').innerHTML = `
-      <div class="stat"><div class="n">${familias.length}</div><div class="l">Familias registradas</div></div>
-      <div class="stat"><div class="n" style="color:var(--emerald);">${pagadas}</div><div class="l">Han pagado</div></div>
-      <div class="stat"><div class="n" style="color:var(--rose);">${familias.length-pagadas}</div><div class="l">Sin pagar</div></div>
+      <div class="stat clickable" data-soc-filtro="todas"><div class="n">${familias.length}</div><div class="l">Familias registradas</div></div>
+      <div class="stat clickable" data-soc-filtro="pagadas"><div class="n" style="color:var(--emerald);">${pagadas}</div><div class="l">Han pagado</div></div>
+      <div class="stat clickable" data-soc-filtro="pendientes"><div class="n" style="color:var(--rose);">${familias.length-pagadas}</div><div class="l">Sin pagar</div></div>
       <div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">Recaudado este curso</div></div>
-      <div class="stat"><div class="n" style="color:${sinAsignar>0?'var(--amber)':'var(--emerald)'};">${sinAsignar}</div><div class="l">Alumnos sin familia</div></div>`;
+      <div class="stat clickable" data-soc-filtro="sinfamilia"><div class="n" style="color:${sinAsignar>0?'var(--amber)':'var(--emerald)'};">${sinAsignar}</div><div class="l">Alumnos sin familia</div></div>`;
+    $$('#socStats .stat.clickable').forEach(el=>el.addEventListener('click', ()=>{
+      const tipo = el.dataset.socFiltro;
+      if(tipo==='sinfamilia'){ $('#sec-soc-sugerencias').open=true; $('#sec-soc-sugerencias').scrollIntoView({behavior:'smooth'}); return; }
+      socFiltroPago = tipo==='pagadas' ? true : tipo==='pendientes' ? false : null;
+      $('#sec-soc-familias').open=true;
+      renderSociosFamilias($('#socBuscar')?.value);
+      $('#sec-soc-familias').scrollIntoView({behavior:'smooth'});
+    }));
   }
 
   function nombreAlumno(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
 
+  let socFiltroPago = null; // null=todas, true=solo pagadas, false=solo pendientes
+
   function renderSociosFamilias(filtro){
     const f = normApellido(filtro||'');
     const box = $('#socFamiliasList');
-    const entries = Object.entries(socFamilias).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||''));
+    let entries = Object.entries(socFamilias).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||''));
+    if(socFiltroPago!==null) entries = entries.filter(([id,fam])=>!!fam.pagado===socFiltroPago);
     const filtradas = !f ? entries : entries.filter(([id,fam])=>{
       if(normApellido(fam.nombre).includes(f)) return true;
       return Object.keys(fam.alumnos||{}).some(aid=>{
@@ -1865,6 +1883,9 @@ if(canAccess('socios')){
       });
     });
     $('#socFamCount').textContent = entries.length ? `${entries.length}` : '';
+    const chipHtml = socFiltroPago!==null
+      ? `<span class="filtro-chip">Mostrando: ${socFiltroPago?'familias que han pagado':'familias sin pagar'}<button id="btnSocQuitarFiltro">✕</button></span>`
+      : '';
     box.innerHTML = filtradas.map(([id,fam])=>{
       const hijos = Object.keys(fam.alumnos||{}).map(aid=>{
         const s = socBuscarAlumnoPorId(aid);
@@ -1886,6 +1907,9 @@ if(canAccess('socios')){
         </div>
       </div>`;
     }).join('') || '<p class="small">No hay familias que coincidan.</p>';
+    box.innerHTML = chipHtml + box.innerHTML;
+    const btnQuitar = $('#btnSocQuitarFiltro');
+    if(btnQuitar) btnQuitar.addEventListener('click', ()=>{ socFiltroPago=null; renderSociosFamilias($('#socBuscar')?.value); });
 
     $$('.soc-pagado').forEach(chk=>chk.addEventListener('change', async ()=>{
       const id=chk.dataset.id;
@@ -2041,19 +2065,35 @@ if(canAccess('socios')){
   let fzDatos = {};
   onValue(ref(db,'socios/fianza_libros'), snap=>{ fzDatos = snap.val() || {}; renderFianzaLibros(); });
 
+  let fzFiltro = null; // null=todos, 'pagada', 'pendiente', 'devuelta'
+
   function renderFianzaLibros(){
     const box=$('#fzList'), stBox=$('#fzStats'); if(!box) return;
-    const alumnos6e = socTodosAlumnos().filter(s=>s.clase==='6è Primària').sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
-    const pagados = alumnos6e.filter(s=>fzDatos[s.id]?.pagado).length;
-    const devueltos = alumnos6e.filter(s=>fzDatos[s.id]?.devuelto).length;
-    $('#fzCount').textContent = alumnos6e.length ? `${pagados}/${alumnos6e.length}` : '';
+    const todos6e = socTodosAlumnos().filter(s=>s.clase==='6è Primària').sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
+    const pagados = todos6e.filter(s=>fzDatos[s.id]?.pagado).length;
+    const devueltos = todos6e.filter(s=>fzDatos[s.id]?.devuelto).length;
+    $('#fzCount').textContent = todos6e.length ? `${pagados}/${todos6e.length}` : '';
     stBox.innerHTML = `
-      <div class="stat"><div class="n">${alumnos6e.length}</div><div class="l">Alumnos de 6è</div></div>
-      <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Fianza pagada</div></div>
-      <div class="stat"><div class="n" style="color:var(--rose);">${alumnos6e.length-pagados}</div><div class="l">Sin pagar</div></div>
-      <div class="stat"><div class="n">${devueltos}</div><div class="l">Ya devueltas</div></div>`;
-    if(!alumnos6e.length){ box.innerHTML='<p class="small">No hay alumnos en 6è Primària todavía.</p>'; return; }
-    box.innerHTML = alumnos6e.map(s=>{
+      <div class="stat clickable" data-fz-filtro="todos"><div class="n">${todos6e.length}</div><div class="l">Alumnos de 6è</div></div>
+      <div class="stat clickable" data-fz-filtro="pagada"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Fianza pagada</div></div>
+      <div class="stat clickable" data-fz-filtro="pendiente"><div class="n" style="color:var(--rose);">${todos6e.length-pagados}</div><div class="l">Sin pagar</div></div>
+      <div class="stat clickable" data-fz-filtro="devuelta"><div class="n">${devueltos}</div><div class="l">Ya devueltas</div></div>`;
+    $$('#fzStats .stat.clickable').forEach(el=>el.addEventListener('click', ()=>{
+      fzFiltro = el.dataset.fzFiltro==='todos' ? null : el.dataset.fzFiltro;
+      renderFianzaLibros();
+      $('#sec-soc-fianza').open=true;
+      $('#fzList').scrollIntoView({behavior:'smooth'});
+    }));
+    if(!todos6e.length){ box.innerHTML='<p class="small">No hay alumnos en 6è Primària todavía.</p>'; return; }
+    const alumnos6e = !fzFiltro ? todos6e : todos6e.filter(s=>{
+      const f = fzDatos[s.id]||{};
+      if(fzFiltro==='pagada') return !!f.pagado;
+      if(fzFiltro==='pendiente') return !f.pagado;
+      if(fzFiltro==='devuelta') return !!f.devuelto;
+      return true;
+    });
+    const chipFz = fzFiltro ? `<span class="filtro-chip">Mostrando: ${fzFiltro==='pagada'?'fianza pagada':fzFiltro==='pendiente'?'fianza sin pagar':'ya devueltas'}<button id="btnFzQuitarFiltro">✕</button></span>` : '';
+    box.innerHTML = chipFz + alumnos6e.map(s=>{
       const f = fzDatos[s.id]||{};
       return `<div class="copyrow">
         <span>${nombreAlumno(s)}</span>
@@ -2066,7 +2106,9 @@ if(canAccess('socios')){
           </label>
         </div>
       </div>`;
-    }).join('');
+    }).join('') || (chipFz + '<p class="small">Nadie coincide con este filtro.</p>');
+    const btnFzQuitar = $('#btnFzQuitarFiltro');
+    if(btnFzQuitar) btnFzQuitar.addEventListener('click', ()=>{ fzFiltro=null; renderFianzaLibros(); });
     $$('.fz-pagado').forEach(chk=>chk.addEventListener('change', async ()=>{
       const id=chk.dataset.id;
       if(chk.checked) await update(ref(db,'socios/fianza_libros/'+id), {pagado:true, importe:30, fechaPago:new Date().toISOString(), curso:CURSO_SOCIOS});
