@@ -152,6 +152,10 @@ ul.students li:last-child{border-bottom:none;}
 .idioma-toggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:.6rem;}
 .idioma-toggle button{background:#fff;color:var(--ink);border-radius:0;padding:.35em .9em;font-size:.8rem;box-shadow:none;}
 .idioma-toggle button.on{background:var(--sky-800);color:#fff;}
+.btn-estado{min-width:118px;}
+.btn-estado.pendiente{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none;}
+.btn-estado.pendiente:hover{background:var(--paper);}
+.btn-estado.hecho{background:var(--emerald);color:#fff;}
 .toggle{position:relative;width:52px;height:28px;flex:0 0 auto;}
 .toggle input{opacity:0;width:0;height:0;}
 .slider{position:absolute;inset:0;background:#CBD5E1;border-radius:999px;transition:.15s;}
@@ -263,6 +267,10 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
 #sideMenu nav a{display:block;padding:.8rem .8rem;border-radius:10px;color:var(--ink);text-decoration:none;
   font-weight:600;font-size:.95rem;margin-bottom:.15rem;}
 #sideMenu nav a:hover,#sideMenu nav a:active{background:var(--paper);}
+#sideMenu nav a.sidenav-area{border:1px solid var(--line);background:var(--paper);margin-bottom:.5rem;
+  box-shadow:0 1px 2px rgba(15,23,42,.05);transition:border-color .15s,box-shadow .15s;}
+#sideMenu nav a.sidenav-area:hover,#sideMenu nav a.sidenav-area:active{background:#fff;border-color:var(--sky-700);
+  box-shadow:0 2px 6px rgba(15,23,42,.08);}
 #sideMenu .side-foot{padding:.8rem;border-top:1px solid var(--line);}
 </style>
 </head>
@@ -1197,7 +1205,8 @@ function renderSideNav(items, subtitle){
   $('#sideNav').innerHTML = items.map(it=>{
     if(it.header) return `<div class="small" style="font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:.9rem .8rem .3rem;">${it.header}</div>`;
     const [href,label] = it;
-    return `<a href="${href}" ${href.startsWith('#action:')?'data-view-action="'+href.slice(8)+'"':''}>${label}</a>`;
+    const esArea = href.startsWith('#action:');
+    return `<a href="${href}" class="${esArea?'sidenav-area':''}" ${esArea?'data-view-action="'+href.slice(8)+'"':''}>${label}</a>`;
   }).join('');
   $$('#sideNav a').forEach(a=>a.addEventListener('click', e=>{
     const target = a.dataset.viewAction;
@@ -1208,7 +1217,7 @@ function renderSideNav(items, subtitle){
 }
 function goToAdminHome(){
   showSection('view-admin','🏠 Administración — Hoy de un vistazo','Panel de la AFA');
-  const supervisar = Object.entries(AREAS).map(([key,a])=>['#action:'+key, a.icon+' Supervisar '+a.label]);
+  const supervisar = Object.entries(AREAS).map(([key,a])=>['#action:'+key, a.icon+' '+a.label]);
   const otrasAreas = supervisar.length ? [{header:'Otras áreas'}, ...supervisar] : [];
   renderSideNav([...ADMIN_HOME_ITEMS, ...otrasAreas], 'Panel de la AFA');
   window.scrollTo({top:0});
@@ -1228,7 +1237,7 @@ $('#sideOverlay').addEventListener('click', closeSideMenu);
 $('#btnMenuLogout').addEventListener('click', ()=>{ closeSideMenu(); signOut(auth); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSideMenu(); });
 
-if(['profesor','monitora','acogida'].includes(rol)){
+if(['profesor','monitora','acogida','admin'].includes(rol)){
   aplicarIdiomaEstatico();
   $$('.idioma-btn').forEach(btn=>{
     btn.classList.toggle('on', btn.dataset.idioma===idioma);
@@ -2525,26 +2534,25 @@ if(canAccess('socios')){
       const f = fzDatos[s.id]||{};
       return `<div class="copyrow">
         <span>${nombreAlumno(s)}</span>
-        <div class="row" style="gap:1rem;">
-          <label class="small" style="display:flex;align-items:center;gap:.3rem;">
-            <label class="toggle"><input type="checkbox" class="fz-pagado" data-id="${s.id}" ${f.pagado?'checked':''}><span class="slider"></span></label>Pagada
-          </label>
-          <label class="small" style="display:flex;align-items:center;gap:.3rem;">
-            <label class="toggle"><input type="checkbox" class="fz-devuelto" data-id="${s.id}" ${f.devuelto?'checked':''} ${!f.pagado?'disabled':''}><span class="slider"></span></label>Devuelta
-          </label>
+        <div class="row" style="gap:.5rem;">
+          <button class="btn-estado fz-pagado-btn ${f.pagado?'hecho':'pendiente'}" data-id="${s.id}">${f.pagado?'✓ Pagada':'Marcar pagada'}</button>
+          <button class="btn-estado fz-devuelto-btn ${f.devuelto?'hecho':'pendiente'}" data-id="${s.id}" ${!f.pagado?'disabled style="opacity:.4;"':''}>${f.devuelto?'✓ Devuelta':'Marcar devuelta'}</button>
         </div>
       </div>`;
     }).join('') || (chipFz + '<p class="small">Nadie coincide con este filtro.</p>');
     const btnFzQuitar = $('#btnFzQuitarFiltro');
     if(btnFzQuitar) btnFzQuitar.addEventListener('click', ()=>{ fzFiltro=null; renderFianzaLibros(); });
-    $$('.fz-pagado').forEach(chk=>chk.addEventListener('change', async ()=>{
-      const id=chk.dataset.id;
-      if(chk.checked) await update(ref(db,'socios/fianza_libros/'+id), {pagado:true, importe:30, fechaPago:new Date().toISOString(), curso:CURSO_SOCIOS});
+    $$('.fz-pagado-btn').forEach(btn=>btn.addEventListener('click', async ()=>{
+      const id=btn.dataset.id;
+      const yaPagada = btn.classList.contains('hecho');
+      if(!yaPagada) await update(ref(db,'socios/fianza_libros/'+id), {pagado:true, importe:30, fechaPago:new Date().toISOString(), curso:CURSO_SOCIOS});
       else await update(ref(db,'socios/fianza_libros/'+id), {pagado:false, fechaPago:null, devuelto:false, fechaDevolucion:null});
     }));
-    $$('.fz-devuelto').forEach(chk=>chk.addEventListener('change', async ()=>{
-      const id=chk.dataset.id;
-      if(chk.checked) await update(ref(db,'socios/fianza_libros/'+id), {devuelto:true, fechaDevolucion:new Date().toISOString()});
+    $$('.fz-devuelto-btn').forEach(btn=>btn.addEventListener('click', async ()=>{
+      if(btn.disabled) return;
+      const id=btn.dataset.id;
+      const yaDevuelta = btn.classList.contains('hecho');
+      if(!yaDevuelta) await update(ref(db,'socios/fianza_libros/'+id), {devuelto:true, fechaDevolucion:new Date().toISOString()});
       else await update(ref(db,'socios/fianza_libros/'+id), {devuelto:false, fechaDevolucion:null});
     }));
   }
