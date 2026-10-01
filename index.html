@@ -387,8 +387,8 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     <div id="adminBanner"></div>
 
     <div class="card" id="sec-inicio">
-      <h2>Hoy de un vistazo</h2>
-      <div class="row" style="justify-content:space-between;">
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;">
+        <h2 style="margin:0;">Hoy de un vistazo</h2>
         <div class="flexcol"><label class="small">Fecha</label><input type="date" id="adminDate"></div>
       </div>
       <div id="semaforoBox" class="semaforo verde" style="margin-top:.6rem;">
@@ -400,8 +400,10 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       </div>
 
       <div class="dash-kpis" id="dashKpis"></div>
+      <div class="grid-stats" id="adminDayStats" style="margin-top:.7rem;"></div>
+      <canvas id="chartDay" height="140"></canvas>
 
-      <div class="dash-grid2">
+      <div class="dash-grid2" style="margin-top:1rem;">
         <div class="dash-col clickable" data-nav="comedor">
           <h3>🍽️ Menú de hoy</h3>
           <div id="dashMenuHoy"></div>
@@ -433,9 +435,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
           <button class="secondary" id="qaRoles">👤 Usuarios y roles</button>
         </div>
       </div>
-
-      <div class="grid-stats" id="adminDayStats" style="margin-top:1.2rem;"></div>
-      <canvas id="chartDay" height="140"></canvas>
     </div>
 
     <div class="card" id="sec-enlaces">
