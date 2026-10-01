@@ -1504,24 +1504,33 @@ if(rol==='admin'){
       const payload = {};
       if(menuActivoId) payload['menus/'+menuActivoId+'/activo'] = false;
       payload['menus/'+btn.dataset.id+'/activo'] = true;
-      await update(ref(db), payload);
-      $('#menuGestionStatus').textContent = 'Menú activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',1800);
+      try{
+        await update(ref(db), payload);
+        $('#menuGestionStatus').textContent = 'Menú activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',1800);
+      }catch(e){ alert('No se pudo activar: '+e.message); }
     });
   }
 
   $('#menuSemanaActualSel').addEventListener('change', async (e)=>{
     if(!menuActivoId) return;
-    await update(ref(db,'menus/'+menuActivoId), {semanaActual: Number(e.target.value)});
+    try{ await update(ref(db,'menus/'+menuActivoId), {semanaActual: Number(e.target.value)}); }
+    catch(err){ alert('No se pudo cambiar la semana: '+err.message); }
   });
   $('#btnMenuCargarActual').addEventListener('click', async ()=>{
     if(!confirm('¿Cargar el menú del curs 2026-2027 (5 setmanes) como nuevo menú, activarlo y archivar el actual?')) return;
     const nuevo = {"nombre": "Menú curs 2026-2027", "temporada": "2026-2027", "periodo": "Actual", "activo": true, "semanaActual": 4, "semanas": [{"numero": 1, "dias": {"dilluns": {"primerPlat": "Crema de verdures", "segonPlat": "Truita de patates amb amanida", "postres": "Làctic"}, "dimarts": {"primerPlat": "Macarrons a la bolonyesa (carn de vedella)", "segonPlat": "Peix amb amanida", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Arròs blanc amb tomata", "segonPlat": "Salsitxes de pollastre", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Llenties amb arròs, xoriç i cap de llom", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Pèsol amb patates", "segonPlat": "Peix al forn amb all i julivert", "postres": "Fruita de temporada"}}}, {"numero": 2, "dias": {"dilluns": {"primerPlat": "Espaguetis amb tomata", "segonPlat": "Lluç amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Estofat de vedella amb patata i pastanaga", "segonPlat": "Brunyols de bacallà amb amanida", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Crema d'hortalisses, verdures i cigrons", "segonPlat": "Truita amb amanida", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Amanida de patata, pèsols, pastanaga, ou i tonyina", "segonPlat": "Pollastre rostit", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Sopa de peix", "segonPlat": "Llom arrebossat amb amanida", "postres": "Làctic"}}}, {"numero": 3, "dias": {"dilluns": {"primerPlat": "Llenties amb arròs, xoriç i cap de llom", "segonPlat": "Peix amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Sopa de pistons (brou d'hortalisses, au i vedella)", "segonPlat": "Truita de patates amb amanida", "postres": "Làctic"}, "dimecres": {"primerPlat": "Arròs amb tomata", "segonPlat": "Mandonguilles amb xampinyons i pastanaga", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Fideus a la cassola amb carn de porc i pollastre", "segonPlat": "Calamars a la romana", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Verdura, patata i pèsols", "segonPlat": "Hamburguesa de pollastre", "postres": "Fruita de temporada"}}}, {"numero": 4, "dias": {"dilluns": {"primerPlat": "Crema d'hortalisses, verdures i cigrons", "segonPlat": "Truita amb amanida", "postres": "Làctic"}, "dimarts": {"primerPlat": "Gaspatxo", "segonPlat": "Hamburguesa de vedella amb patates fregides", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Puré de patates", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Verdura, patata i pèsols", "segonPlat": "Peix al forn amb all i julivert", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Arròs a la cassola amb sèpia, gambetes i pollastre", "segonPlat": "Croquetes variades", "postres": "Fruita de temporada"}}}, {"numero": 5, "dias": {"dilluns": {"primerPlat": "Amanida de pasta", "segonPlat": "Truita amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Sopa amb pasta (brou d'hortalisses, au i vedella)", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Làctic"}, "dimecres": {"primerPlat": "Arròs amb tomata", "segonPlat": "Mandonguilles amb xampinyons i pastanaga", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Verdura patata i pèsols", "segonPlat": "Pollastre rostit", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Llenties amb verdures (albergínia, pastanaga, ceba...)", "segonPlat": "Lluç amb amanida", "postres": "Fruita de temporada"}}}], "informacionAdicional": {"verdura": "pastanaga, mongeta...", "amanida": "enciam, tomata, pastanaga i olives", "fruita": "poma, pera, taronja...", "pa": "Pa", "aigua": "Aigua"}};
-    const payload = {};
-    if(menuActivoId) payload['menus/'+menuActivoId+'/activo'] = false;
-    const newRef = push(ref(db,'menus'));
-    await set(newRef, nuevo);
-    await update(ref(db), payload);
-    $('#menuGestionStatus').textContent = 'Menú cargado y activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+    $('#menuGestionStatus').textContent = 'Guardando…';
+    try{
+      const payload = {};
+      if(menuActivoId) payload['menus/'+menuActivoId+'/activo'] = false;
+      const newRef = push(ref(db,'menus'));
+      await set(newRef, nuevo);
+      await update(ref(db), payload);
+      $('#menuGestionStatus').textContent = 'Menú cargado y activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+    }catch(e){
+      $('#menuGestionStatus').textContent = 'ERROR: '+e.message;
+      alert('No se pudo guardar el menú: '+e.message+'\n\n¿Están publicadas las reglas de Firebase más recientes (menus)?');
+    }
   });
   $('#btnMenuEditar').addEventListener('click', ()=>{
     if(!menuActivo){ alert('No hay ningún menú activo que editar.'); return; }
@@ -1532,9 +1541,11 @@ if(rol==='admin'){
     if(!menuActivo){ alert('No hay ningún menú activo que duplicar.'); return; }
     const nombre = prompt('Nombre para la copia:', menuActivo.nombre+' (copia)');
     if(!nombre) return;
-    const newRef = push(ref(db,'menus'));
-    await set(newRef, {...menuActivo, nombre, activo:false, semanaActual: menuActivo.semanaActual||1});
-    $('#menuGestionStatus').textContent = 'Duplicado ✓ — edítalo desde el histórico.'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+    try{
+      const newRef = push(ref(db,'menus'));
+      await set(newRef, {...menuActivo, nombre, activo:false, semanaActual: menuActivo.semanaActual||1});
+      $('#menuGestionStatus').textContent = 'Duplicado ✓ — edítalo desde el histórico.'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+    }catch(e){ alert('No se pudo duplicar: '+e.message); }
   });
   $('#btnMenuSustituir').addEventListener('click', ()=>{
     $('#sec-menu-historico').open = true;
@@ -1543,18 +1554,24 @@ if(rol==='admin'){
   $('#btnMenuDesactivar').addEventListener('click', async ()=>{
     if(!menuActivoId){ alert('No hay ningún menú activo.'); return; }
     if(!confirm('¿Desactivar el menú activo? No se mostrará ningún menú hasta que actives otro desde el histórico.')) return;
-    await update(ref(db,'menus/'+menuActivoId), {activo:false});
+    try{ await update(ref(db,'menus/'+menuActivoId), {activo:false}); }
+    catch(e){ alert('No se pudo desactivar: '+e.message); }
   });
   $('#btnMenuGuardarForm').addEventListener('click', async ()=>{
     const datos = leerFormulario();
     if(!datos.nombre){ alert('Ponle un nombre al menú.'); return; }
-    if(menuFormEditandoId){
-      await update(ref(db,'menus/'+menuFormEditandoId), datos);
-    } else {
-      const newRef = push(ref(db,'menus'));
-      await set(newRef, {...datos, activo:false, semanaActual:1});
+    try{
+      if(menuFormEditandoId){
+        await update(ref(db,'menus/'+menuFormEditandoId), datos);
+      } else {
+        const newRef = push(ref(db,'menus'));
+        await set(newRef, {...datos, activo:false, semanaActual:1});
+      }
+      $('#menuFormStatus').textContent = 'Guardado ✓'; setTimeout(()=>$('#menuFormStatus').textContent='',1800);
+    }catch(e){
+      $('#menuFormStatus').textContent = 'ERROR: '+e.message;
+      alert('No se pudo guardar: '+e.message);
     }
-    $('#menuFormStatus').textContent = 'Guardado ✓'; setTimeout(()=>$('#menuFormStatus').textContent='',1800);
   });
 }
 
