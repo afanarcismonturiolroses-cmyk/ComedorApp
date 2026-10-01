@@ -149,6 +149,9 @@ ul.students li:last-child{border-bottom:none;}
 .dash-quick h3{font-size:.95rem;margin-bottom:.5rem;}
 .dash-quick-btns{display:flex;gap:.5rem;flex-wrap:wrap;}
 .dash-quick-btns button{flex:1;min-width:150px;}
+.idioma-toggle{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:.6rem;}
+.idioma-toggle button{background:#fff;color:var(--ink);border-radius:0;padding:.35em .9em;font-size:.8rem;box-shadow:none;}
+.idioma-toggle button.on{background:var(--sky-800);color:#fff;}
 .toggle{position:relative;width:52px;height:28px;flex:0 0 auto;}
 .toggle input{opacity:0;width:0;height:0;}
 .slider{position:absolute;inset:0;background:#CBD5E1;border-radius:999px;transition:.15s;}
@@ -318,61 +321,63 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA PROFESOR ============ -->
   <section id="view-profesor" class="hidden">
     <div class="card">
+      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
       <input type="date" id="profesorDate" class="hidden">
-      <p class="small">Marca quién se queda hoy al comedor. Los cambios se guardan y sincronizan al instante.</p>
+      <p class="small" data-i18n="profesor_instrucciones"></p>
     </div>
-    <div class="card"><h2>🍽️ Menú de la semana</h2><div id="profesorMenu" class="small">Cargando menú…</div></div>
+    <div class="card"><h2 data-i18n="menu_semana"></h2><div id="profesorMenu" class="small" data-i18n="cargando_menu"></div></div>
     <div class="card">
       <div class="row" style="justify-content:space-between;">
-        <h2>Lista de la clase</h2>
+        <h2 data-i18n="lista_clase"></h2>
         <span class="small" id="profesorResumen"></span>
       </div>
       <ul class="students" id="profesorList"></ul>
-      <button class="secondary" id="btnNotaProfesor" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
+      <button class="secondary" id="btnNotaProfesor" style="margin-top:.8rem;" data-i18n="btn_nota_incidencia"></button>
     </div>
   </section>
 
   <!-- ============ VISTA PROFESOR SIN CLASE ============ -->
   <section id="view-profesor-noclase" class="hidden">
     <div class="msg-screen card">
-      <h2>Falta la clase en el enlace</h2>
-      <p class="small">Este enlace de profesorado no indica una clase. Pide a Administración tu enlace personalizado (incluye <code>&clase=...</code>).</p>
+      <h2 data-i18n="falta_clase_titulo"></h2>
+      <p class="small" data-i18n="falta_clase_texto"></p>
     </div>
   </section>
 
   <!-- ============ VISTA MONITORA ============ -->
   <section id="view-monitora" class="hidden">
     <div class="card">
+      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
       <div class="row" style="justify-content:space-between;">
-        <div class="flexcol"><label class="small">Fecha</label><input type="date" id="monitoraDate"></div>
-        <div class="flexcol"><label class="small">Monitores atendiendo hoy</label>
+        <div class="flexcol"><label class="small" data-i18n="fecha"></label><input type="date" id="monitoraDate"></div>
+        <div class="flexcol"><label class="small" data-i18n="monitores_hoy"></label>
           <input type="number" id="monitorsCount" min="0" style="max-width:100px;"></div>
-        <button id="btnAddExtra" class="secondary">+ Añadir niño/a no listado</button>
+        <button id="btnAddExtra" class="secondary" data-i18n="añadir_nino_no_listado"></button>
       </div>
       <div id="monitoraBanner"></div>
       <div id="monitoraSemaforoBox" class="semaforo verde" style="margin-top:.4rem;">
         <div class="dot"></div>
         <div>
-          <div id="monitoraSemaforoTexto">Cargando…</div>
+          <div id="monitoraSemaforoTexto" data-i18n="cargando"></div>
           <div class="small" id="monitoraSemaforoDetalle" style="opacity:.9;"></div>
         </div>
       </div>
       <div class="row" style="margin-top:.6rem;">
-        <button id="btnProtocolo" class="danger">📞 Activar protocolo: llamar monitor extra</button>
+        <button id="btnProtocolo" class="danger" data-i18n="activar_protocolo"></button>
         <span class="small" id="protocoloStatus"></span>
       </div>
       <div class="grid-stats" id="monitoraStats"></div>
     </div>
     <div class="card">
-      <h2>🍽️ Menú de la semana</h2>
-      <div id="monitoraMenu" class="small">Cargando menú…</div>
+      <h2 data-i18n="menu_semana"></h2>
+      <div id="monitoraMenu" class="small" data-i18n="cargando_menu"></div>
       <div id="monitoraAllergies"></div>
     </div>
     <div class="card">
-      <h2>Niños marcados para comer hoy</h2>
-      <p class="small">Confirma quién come realmente. Si alguien iba a quedarse y al final no, desmárcalo y anota la incidencia.</p>
+      <h2 data-i18n="ninos_marcados_hoy"></h2>
+      <p class="small" data-i18n="confirma_quien_come"></p>
       <ul class="students" id="monitoraList"></ul>
-      <button class="secondary" id="btnNotaMonitora" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
+      <button class="secondary" id="btnNotaMonitora" style="margin-top:.8rem;" data-i18n="btn_nota_incidencia"></button>
     </div>
   </section>
 
@@ -678,30 +683,30 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA ACOGIDA ============ -->
   <section id="view-acogida" class="hidden">
     <div class="card" id="sec-acogida-resumen">
-      <h2>🌅 Acogida matinal</h2>
+      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
+      <h2 data-i18n="acogida_titulo"></h2>
       <div class="grid-stats" id="acogidaStats"></div>
     </div>
 
     <div class="card" id="sec-acogida-asistencia">
-      <h2>Niños en acogida hoy</h2>
+      <h2 data-i18n="ninos_acogida_hoy"></h2>
       <div class="row">
         <input type="date" id="acgFecha">
-        <select id="acgClaseFiltro"><option value="">Todas las clases</option></select>
+        <select id="acgClaseFiltro"><option value="" data-i18n="todas_clases"></option></select>
       </div>
       <div id="acgHabituales" style="margin-top:.7rem;"></div>
-      <input type="text" id="acgBuscarHoy" placeholder="Buscar alumno para añadir…" style="margin-top:.7rem;">
+      <input type="text" id="acgBuscarHoy" data-i18n-placeholder="buscar_para_añadir" style="margin-top:.7rem;">
       <div id="acgAsistenciaLista" style="margin-top:.6rem;"></div>
-      <button class="secondary" id="btnNotaAcogida" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
+      <button class="secondary" id="btnNotaAcogida" style="margin-top:.8rem;" data-i18n="btn_nota_incidencia"></button>
     </div>
 
     <details class="card" id="sec-acogida-cierre">
-      <summary>Cierre de mes</summary>
+      <summary data-i18n="cierre_mes"></summary>
       <div class="details-body">
-        <p class="small">Precios socios: 2 €/día · 15 €/medio mes (12+ días) · 20 €/mes (20+ días).<br>
-        Precios no socios: 3 €/día · 30 €/medio mes · 50 €/mes.</p>
+        <p class="small" data-i18n="precios_texto"></p>
         <div class="row">
           <input type="month" id="acgMes">
-          <button id="btnAcgCalcular">Calcular</button>
+          <button id="btnAcgCalcular" data-i18n="calcular"></button>
         </div>
         <div id="acgCierreResultado" style="margin-top:.8rem;"></div>
       </div>
@@ -861,6 +866,8 @@ async function loadRoleAndStart(user){
     if(typeof v === 'string'){ r = v; }
     else if(v && typeof v === 'object'){ r = v.rol || null; c = v.clase || null; }
     window.__ROL = r; window.__CLASE = c;
+    try{ const idiomaSnap = await get(ref(db,'idiomas/'+user.uid)); window.__IDIOMA = idiomaSnap.exists() ? idiomaSnap.val() : 'es'; }
+    catch(e){ window.__IDIOMA = 'es'; }
     if(!['admin','monitora','profesor'].includes(r)){
       const el=document.getElementById('noRoleInfo');
       if(el) el.textContent='Datos técnicos · UID: '+user.uid+' · valor leído en roles/'+user.uid+': '+JSON.stringify(v);
@@ -928,8 +935,8 @@ async function registrarIncidencia(modulo, alumno, nota){
   return true;
 }
 function pedirIncidencia(modulo, alumno){
-  const titulo = alumno ? `Incidencia — ${alumno.nombre}` : 'Nota / incidencia';
-  const nota = prompt(titulo+'\\n\\nDescribe qué ha pasado:', '');
+  const titulo = alumno ? t('incidencia_titulo')+alumno.nombre : t('incidencia_generica_titulo');
+  const nota = prompt(titulo+'\n\n'+t('incidencia_describe'), '');
   if(nota===null || !nota.trim()) return;
   registrarIncidencia(modulo, alumno, nota);
 }
@@ -952,6 +959,104 @@ function semaforoColor(total){
 const params = new URLSearchParams(location.search);
 const rol = window.__ROL;
 const claseParam = window.__CLASE;
+let idioma = window.__IDIOMA || 'es';
+
+const I18N = {
+  es: {
+    cargando_menu:'Cargando menú…', sin_definir:'Sin definir', menu_semana:'🍽️ Menú de la semana',
+    btn_nota_incidencia:'📋 Añadir nota / incidencia', quitar:'Quitar',
+    incidencia_titulo:'Incidencia — ', incidencia_generica_titulo:'Nota / incidencia',
+    incidencia_describe:'Describe qué ha pasado:',
+    profesor_instrucciones:'Marca quién se queda hoy al comedor. Los cambios se guardan y sincronizan al instante.',
+    lista_clase:'Lista de la clase', resumen_quedan:'{quedan} de {total} se quedan hoy',
+    falta_clase_titulo:'Falta la clase en el enlace',
+    falta_clase_texto:'Este enlace de profesorado no indica una clase. Pide a Administración tu enlace personalizado (incluye <code>&amp;clase=...</code>).',
+    fecha:'Fecha', monitores_hoy:'Monitores atendiendo hoy', añadir_nino_no_listado:'+ Añadir niño/a no listado',
+    activar_protocolo:'📞 Activar protocolo: llamar monitor extra',
+    ninos_marcados_hoy:'Niños marcados para comer hoy',
+    confirma_quien_come:'Confirma quién come realmente. Si alguien iba a quedarse y al final no, desmárcalo y anota la incidencia.',
+    cargando:'Cargando…', todo_bajo_control:'Todo bajo control', prevision_alta:'Previsión alta de comensales',
+    prevision_muy_alta:'Previsión muy alta, valora pedir refuerzo',
+    marcados_hoy_profes:'{n} niños marcados hoy por el profesorado',
+    semaforo_banner:'⚠ Semáforo en {color}: revisa si necesitas activar el protocolo.',
+    ha_comido:'✓ Ha comido', no_vino:'✕ No vino',
+    marcados_por_profes:'Marcados por profes', por_revisar:'Por revisar', confirmados_presentes:'Confirmados presentes',
+    incidencias_no_vino:'Incidencias (no vino)', ha_comido_tag:'Ha comido', nadie_marcado:'Nadie marcado todavía.',
+    confirm_protocolo:'Se enviará un aviso por email a la AFA y a la escuela indicando {n} niños marcados (nivel {color}). ¿Confirmas?',
+    enviando:'Enviando...', aviso_enviado:'Aviso enviado ✓', error_prefix:'Error: ',
+    motivo_incidencia_no_vino:'Motivo de la incidencia (opcional), ej. "avisó la familia, no viene hoy":',
+    nombre_nino_add:'Nombre del niño/a a añadir:', clase_add:'Clase:',
+    acogida_titulo:'🌅 Acogida matinal', ninos_acogida_hoy:'Niños en acogida hoy', todas_clases:'Todas las clases',
+    habituales:'⭐ Habituales', resultados:'Resultados',
+    sin_historico:'Todavía no hay histórico de habituales. Busca abajo para añadir al primer niño.',
+    buscar_para_añadir:'Buscar alumno para añadir…',
+    hoy_estan_aqui:'Hoy están aquí ({n})', nadie_marcado_hoy:'Nadie marcado todavía hoy.',
+    cierre_mes:'Cierre de mes',
+    precios_texto:'Precios socios: 2 €/día · 15 €/medio mes (12+ días) · 20 €/mes (20+ días).<br>Precios no socios: 3 €/día · 30 €/medio mes · 50 €/mes.',
+    calcular:'Calcular', elige_mes:'Elige un mes.',
+    familias_facturar:'{n} familia(s) a facturar · total {total}',
+    socio:'Socio', no_socio:'No socio', nadie_vino_mes:'Nadie ha venido a acogida este mes.',
+    pago_transferencia:'Pago por transferencia o ingreso en Banc Sabadell, ES90 0081 0213 39 0001554158.',
+    dias_flecha:' días → ', medio_mes:'Medio mes', mes_completo:'Mes completo', dia_sing:' día', dia_plural:' días',
+    dias_label:'días', no_alumnos_clase:'No hay alumnos cargados en esta clase todavía.', incidencia_nota_tag:'Incidencia', alergias_hoy_titulo:'⚠ Alergias/restricciones de hoy'
+  },
+  ca: {
+    cargando_menu:'Carregant menú…', sin_definir:'Sense definir', menu_semana:'🍽️ Menú de la setmana',
+    btn_nota_incidencia:'📋 Afegeix nota / incidència', quitar:'Treu',
+    incidencia_titulo:'Incidència — ', incidencia_generica_titulo:'Nota / incidència',
+    incidencia_describe:'Descriu què ha passat:',
+    profesor_instrucciones:'Marca qui es queda avui al menjador. Els canvis es desen i es sincronitzen a l\'instant.',
+    lista_clase:'Llista de la classe', resumen_quedan:'{quedan} de {total} es queden avui',
+    falta_clase_titulo:'Falta la classe a l\'enllaç',
+    falta_clase_texto:'Aquest enllaç de professorat no indica una classe. Demana a Administració el teu enllaç personalitzat (inclou <code>&amp;clase=...</code>).',
+    fecha:'Data', monitores_hoy:'Monitors atenent avui', añadir_nino_no_listado:'+ Afegeix infant no llistat',
+    activar_protocolo:'📞 Activa el protocol: truca monitor extra',
+    ninos_marcados_hoy:'Infants marcats per dinar avui',
+    confirma_quien_come:'Confirma qui menja realment. Si algú s\'havia de quedar i al final no, desmarca\'l i anota la incidència.',
+    cargando:'Carregant…', todo_bajo_control:'Tot sota control', prevision_alta:'Previsió alta de comensals',
+    prevision_muy_alta:'Previsió molt alta, valora demanar reforç',
+    marcados_hoy_profes:'{n} infants marcats avui pel professorat',
+    semaforo_banner:'⚠ Semàfor en {color}: revisa si necessites activar el protocol.',
+    ha_comido:'✓ Ha menjat', no_vino:'✕ No ha vingut',
+    marcados_por_profes:'Marcats pel professorat', por_revisar:'Per revisar', confirmados_presentes:'Confirmats presents',
+    incidencias_no_vino:'Incidències (no ha vingut)', ha_comido_tag:'Ha menjat', nadie_marcado:'Ningú marcat encara.',
+    confirm_protocolo:'S\'enviarà un avís per correu a l\'AFA i a l\'escola indicant {n} infants marcats (nivell {color}). Confirmes?',
+    enviando:'Enviant...', aviso_enviado:'Avís enviat ✓', error_prefix:'Error: ',
+    motivo_incidencia_no_vino:'Motiu de la incidència (opcional), ex. "va avisar la família, no ve avui":',
+    nombre_nino_add:'Nom de l\'infant a afegir:', clase_add:'Classe:',
+    acogida_titulo:'🌅 Acollida matinal', ninos_acogida_hoy:'Infants a l\'acollida avui', todas_clases:'Totes les classes',
+    habituales:'⭐ Habituals', resultados:'Resultats',
+    sin_historico:'Encara no hi ha històric d\'habituals. Cerca a sota per afegir el primer infant.',
+    buscar_para_añadir:'Cerca alumne per afegir…',
+    hoy_estan_aqui:'Avui són aquí ({n})', nadie_marcado_hoy:'Ningú marcat encara avui.',
+    cierre_mes:'Tancament de mes',
+    precios_texto:'Preus socis: 2 €/dia · 15 €/mig mes (12+ dies) · 20 €/mes (20+ dies).<br>Preus no socis: 3 €/dia · 30 €/mig mes · 50 €/mes.',
+    calcular:'Calcula', elige_mes:'Tria un mes.',
+    familias_facturar:'{n} família(es) a facturar · total {total}',
+    socio:'Soci', no_socio:'No soci', nadie_vino_mes:'Ningú ha vingut a l\'acollida aquest mes.',
+    pago_transferencia:'Pagament per transferència o ingrés al Banc Sabadell, ES90 0081 0213 39 0001554158.',
+    dias_flecha:' dies → ', medio_mes:'Mig mes', mes_completo:'Mes complet', dia_sing:' dia', dia_plural:' dies',
+    dias_label:'dies', no_alumnos_clase:'Encara no hi ha alumnes carregats en aquesta classe.', incidencia_nota_tag:'Incidència', alergias_hoy_titulo:'⚠ Al·lèrgies/restriccions d\'avui'
+  }
+};
+function t(key, vars){
+  let s = (I18N[idioma]||I18N.es)[key] ?? (I18N.es[key] ?? key);
+  if(vars) for(const [k,v] of Object.entries(vars)) s = s.replaceAll('{'+k+'}', v);
+  return s;
+}
+function aplicarIdiomaEstatico(){
+  $$('[data-i18n]').forEach(el=>{ el.innerHTML = t(el.dataset.i18n); });
+  $$('[data-i18n-placeholder]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPlaceholder); });
+}
+async function cambiarIdioma(nuevo){
+  idioma = nuevo;
+  if(auth.currentUser) await set(ref(db,'idiomas/'+auth.currentUser.uid), nuevo);
+  aplicarIdiomaEstatico();
+  if(rol==='profesor' && claseParam) renderProfesorList();
+  if(rol==='monitora'){ renderMonitoraList(); renderMonitoraMenu(); }
+  if(rol==='acogida'){ renderAcgQuickPick(); }
+  $$('.idioma-toggle button').forEach(b=>b.classList.toggle('on', b.dataset.idioma===idioma));
+}
 
 function showSection(id, title, subtitle){
   ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal','view-comunicacion','view-comedor'].forEach(v=>{
@@ -1082,6 +1187,13 @@ $('#sideOverlay').addEventListener('click', closeSideMenu);
 $('#btnMenuLogout').addEventListener('click', ()=>{ closeSideMenu(); signOut(auth); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSideMenu(); });
 
+if(['profesor','monitora','acogida'].includes(rol)){
+  aplicarIdiomaEstatico();
+  $$('.idioma-btn').forEach(btn=>{
+    btn.classList.toggle('on', btn.dataset.idioma===idioma);
+    btn.addEventListener('click', ()=> cambiarIdioma(btn.dataset.idioma));
+  });
+}
 if(rol==='profesor'){
   if(claseParam){ showSection('view-profesor','🍽️ Comedor — Profesorado', claseParam); }
   else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
@@ -1196,6 +1308,8 @@ function ensureListening(date){
    MENÚ SEMANAL
    ======================================================================== */
 const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+const DAY_NAMES_CA = ['Dilluns','Dimarts','Dimecres','Dijous','Divendres'];
+function diaNombre(i){ return (idioma==='ca' ? DAY_NAMES_CA : DAY_NAMES)[i]; }
 function mondayOf(dateStr){
   const d=new Date(dateStr+'T12:00:00');
   const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day);
@@ -1213,9 +1327,9 @@ function renderProfesorMenu(){ const target=$('#profesorMenu'); if(target) rende
 function renderMenuReadOnly(target){
   const week=$('#menuWeek')?.value || mondayOf(todayStr());
   const data=menuWeekData||{};
-  target.innerHTML=DAY_NAMES.map((d,i)=>{
+  target.innerHTML=DAY_NAMES.map((_,i)=>{
     const key=String(i+1); const v=data[key]||{};
-    return `<div class="menu-day"><div class="menu-date">${d}</div><div>${v.plato||'<span class="small">Sin definir</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;
+    return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${v.plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;
   }).join('');
 }
 function renderMenuEditor(){
@@ -1225,7 +1339,7 @@ function renderMenuEditor(){
 }
 function renderMonitoraMenu(){
   const target=$('#monitoraMenu'); if(!target) return;
-  target.innerHTML=DAY_NAMES.map((d,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${d}</div><div>${v.plato||'<span class="small">Sin definir</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;}).join('');
+  target.innerHTML=DAY_NAMES.map((_,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${v.plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;}).join('');
 }
 function renderMonitoraAllergies(){
   if(rol!=='monitora') return;
@@ -1234,7 +1348,7 @@ function renderMonitoraAllergies(){
     const a=dayAtt[id];
     if(a?.marcaProfesor && s.alergias) out.push(`<div><strong>${s.nombre} ${s.apellidos||''}</strong> <span class="small">(${classId})</span> — ⚠ ${s.alergias}</div>`);
   }
-  const box=$('#monitoraAllergies'); box.innerHTML=out.length?`<div class="allergy-box"><strong>⚠ Alergias/restricciones de hoy</strong>${out.join('')}</div>`:'';
+  const box=$('#monitoraAllergies'); box.innerHTML=out.length?`<div class="allergy-box"><strong>${t('alergias_hoy_titulo')}</strong>${out.join('')}</div>`:'';
 }
 
 if(rol==='admin'){
@@ -1271,7 +1385,7 @@ function renderProfesorList(){
   const classStudents = students[classId] || {};
   const att = attendanceCache[date] || {};
   const ids = Object.keys(classStudents);
-  if(ids.length===0){ list.innerHTML = '<li class="small">No hay alumnos cargados en esta clase todavía.</li>'; $('#profesorResumen').textContent=''; return; }
+  if(ids.length===0){ list.innerHTML = `<li class="small">${t('no_alumnos_clase')}</li>`; $('#profesorResumen').textContent=''; return; }
   let quedan = 0;
   list.innerHTML = ids.map(id=>{
     const s = classStudents[id];
@@ -1286,7 +1400,7 @@ function renderProfesorList(){
       <label class="toggle"><input type="checkbox" data-id="${id}" ${checked?'checked':''}><span class="slider"></span></label>
     </li>`;
   }).join('');
-  $('#profesorResumen').textContent = `${quedan} de ${ids.length} se quedan hoy`;
+  $('#profesorResumen').textContent = t('resumen_quedan', {quedan, total: ids.length});
   $$('#profesorList input[type=checkbox]').forEach(cb=>{
     cb.addEventListener('change', ()=>{
       const id = cb.dataset.id;
@@ -1323,11 +1437,11 @@ function renderMonitoraSemaforo(){
   const color = semaforoColor(st.marcados);
   const box = $('#monitoraSemaforoBox');
   box.className = 'semaforo '+color;
-  $('#monitoraSemaforoTexto').textContent = color==='verde' ? 'Todo bajo control'
-    : color==='amarillo' ? 'Previsión alta de comensales' : 'Previsión muy alta, valora pedir refuerzo';
-  $('#monitoraSemaforoDetalle').textContent = `${st.marcados} niños marcados hoy por el profesorado`;
+  $('#monitoraSemaforoTexto').textContent = color==='verde' ? t('todo_bajo_control')
+    : color==='amarillo' ? t('prevision_alta') : t('prevision_muy_alta');
+  $('#monitoraSemaforoDetalle').textContent = t('marcados_hoy_profes', {n: st.marcados});
   $('#monitoraBanner').innerHTML = color==='verde' ? '' :
-    `<div class="banner ${color}">⚠ Semáforo en ${color.toUpperCase()}: revisa si necesitas activar el protocolo.</div>`;
+    `<div class="banner ${color}">${t('semaforo_banner', {color: color.toUpperCase()})}</div>`;
   $('#btnProtocolo').disabled = (color==='verde');
 }
 
@@ -1337,13 +1451,13 @@ if(rol==='monitora'){
     const date = $('#monitoraDate').value || todayStr();
     const st = computeDayStats(date);
     const color = semaforoColor(st.marcados);
-    if(!confirm(`Se enviará un aviso por email a la AFA y a la escuela indicando ${st.marcados} niños marcados (nivel ${color.toUpperCase()}). ¿Confirmas?`)) return;
-    $('#protocoloStatus').textContent = 'Enviando...';
+    if(!confirm(t('confirm_protocolo', {n: st.marcados, color: color.toUpperCase()}))) return;
+    $('#protocoloStatus').textContent = t('enviando');
     try{
       await enviarProtocolo(date, st.marcados, color);
-      $('#protocoloStatus').textContent = 'Aviso enviado ✓';
+      $('#protocoloStatus').textContent = t('aviso_enviado');
     }catch(e){
-      $('#protocoloStatus').textContent = 'Error: ' + e.message;
+      $('#protocoloStatus').textContent = t('error_prefix') + e.message;
     }
     setTimeout(()=>$('#protocoloStatus').textContent='',4000);
   });
@@ -1373,27 +1487,27 @@ function renderMonitoraList(){
     }
   }
   $('#monitoraStats').innerHTML = `
-    <div class="stat"><div class="n">${marcados}</div><div class="l">Marcados por profes</div></div>
-    <div class="stat"><div class="n">${pendientes}</div><div class="l">Por revisar</div></div>
-    <div class="stat"><div class="n">${confirmados}</div><div class="l">Confirmados presentes</div></div>
-    <div class="stat"><div class="n">${incidencias}</div><div class="l">Incidencias (no vino)</div></div>`;
+    <div class="stat"><div class="n">${marcados}</div><div class="l">${t('marcados_por_profes')}</div></div>
+    <div class="stat"><div class="n">${pendientes}</div><div class="l">${t('por_revisar')}</div></div>
+    <div class="stat"><div class="n">${confirmados}</div><div class="l">${t('confirmados_presentes')}</div></div>
+    <div class="stat"><div class="n">${incidencias}</div><div class="l">${t('incidencias_no_vino')}</div></div>`;
 
   $('#monitoraList').innerHTML = rows.map(r=>`
     <li>
       <span><span class="name">${r.s.nombre} ${r.s.apellidos||''}</span>
         <span class="small">(${r.classId})</span>
         ${r.s.alergias ? `<span class="tag alergia">⚠ ${r.s.alergias}</span>`:''}
-        ${r.estado==='confirmado' ? `<span class="tag becado" style="background:#DCEEE2;color:#204C37;">Ha comido</span>`:''}
-        ${r.estado==='incidencia' ? `<span class="tag alergia">Incidencia${r.a.incidenciaNota ? ': '+r.a.incidenciaNota : ''}</span>`:''}
+        ${r.estado==='confirmado' ? `<span class="tag becado" style="background:#DCEEE2;color:#204C37;">${t('ha_comido_tag')}</span>`:''}
+        ${r.estado==='incidencia' ? `<span class="tag alergia">${t('incidencia_nota_tag')}${r.a.incidenciaNota ? ': '+r.a.incidenciaNota : ''}</span>`:''}
       </span>
       <span class="row" style="gap:.3rem;">
         <button class="secondary btn-confirma" data-class="${r.classId}" data-id="${r.id}"
-          style="${r.estado==='confirmado' ? 'background:var(--forest);color:#fff;' : ''}">✓ Ha comido</button>
+          style="${r.estado==='confirmado' ? 'background:var(--forest);color:#fff;' : ''}">${t('ha_comido')}</button>
         <button class="secondary btn-incidencia" data-class="${r.classId}" data-id="${r.id}"
-          style="${r.estado==='incidencia' ? 'background:var(--alert);color:#fff;' : ''}">✕ No vino</button>
+          style="${r.estado==='incidencia' ? 'background:var(--alert);color:#fff;' : ''}">${t('no_vino')}</button>
         <button class="secondary btn-inc" data-id="${r.id}" data-nombre="${r.s.nombre} ${r.s.apellidos||''}" data-clase="${r.classId}" style="padding:.3em .5em;">📋</button>
       </span>
-    </li>`).join('') || '<li class="small">Nadie marcado todavía.</li>';
+    </li>`).join('') || `<li class="small">${t('nadie_marcado')}</li>`;
 
   $$('#monitoraList .btn-confirma').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1404,7 +1518,7 @@ function renderMonitoraList(){
   });
   $$('#monitoraList .btn-incidencia').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const nota = prompt('Motivo de la incidencia (opcional), ej. "avisó la familia, no viene hoy":', '') || '';
+      const nota = prompt(t('motivo_incidencia_no_vino'), '') || '';
       update(ref(db, `attendance/${date}/${btn.dataset.id}`), {
         confirmadoMonitora: false, incidenciaNota: nota, horaConfirmMonitora: new Date().toISOString()
       });
@@ -1417,9 +1531,9 @@ function renderMonitoraList(){
 
 if(rol==='monitora'){
   $('#btnAddExtra').addEventListener('click', async ()=>{
-    const nombre = prompt('Nombre del niño/a a añadir:');
+    const nombre = prompt(t('nombre_nino_add'));
     if(!nombre) return;
-    const clase = prompt('Clase:', classesList[0]) || classesList[0];
+    const clase = prompt(t('clase_add'), classesList[0]) || classesList[0];
     const date = $('#monitoraDate').value || todayStr();
     const newId = `EXTRA-${Date.now()}`;
     await set(ref(db, `students/${newId}`), { id:newId, nombre, apellidos:'', clase, alergias:'', tipoPago:'esporadico', becado:false, becaImporte:0, activo:true, añadidoSobreLaMarcha:true });
@@ -2251,9 +2365,9 @@ if(canAccess('socios')){
 const ACOGIDA_PRECIOS = { socio:{dia:2,medio:15,mes:20}, nosocio:{dia:3,medio:30,mes:50} };
 function acogidaTarifa(dias, esSocio){
   const p = esSocio ? ACOGIDA_PRECIOS.socio : ACOGIDA_PRECIOS.nosocio;
-  if(dias>=20) return {tipo:'Mes completo', importe:p.mes};
-  if(dias>=12) return {tipo:'Medio mes', importe:p.medio};
-  return {tipo:dias+' día'+(dias===1?'':'s'), importe:dias*p.dia};
+  if(dias>=20) return {tipo:t('mes_completo'), importe:p.mes};
+  if(dias>=12) return {tipo:t('medio_mes'), importe:p.medio};
+  return {tipo:dias+(dias===1?t('dia_sing'):t('dia_plural')), importe:dias*p.dia};
 }
 
 if(canAccess('acogida')){
@@ -2284,15 +2398,15 @@ if(canAccess('acogida')){
     let filas = Object.keys(asistHoy).map(id=>({id, s:acgStudents[id]})).filter(x=>x.s);
     if(claseF) filas = filas.filter(x=>x.s.clase===claseF);
     filas.sort((a,b)=>nombreAcg(a.s).localeCompare(nombreAcg(b.s)));
-    $('#acgAsistenciaLista').innerHTML = `<p class="small" style="margin:.6rem 0 .3rem;">Hoy están aquí (${filas.length})</p>` +
+    $('#acgAsistenciaLista').innerHTML = `<p class="small" style="margin:.6rem 0 .3rem;">${t('hoy_estan_aqui',{n:filas.length})}</p>` +
       (filas.map(({id,s})=>`
         <div class="copyrow">
           <span>${nombreAcg(s)} · <span class="small">${s.clase}</span></span>
           <span class="row" style="gap:.3rem;">
             <button class="secondary acg-inc" data-id="${id}" style="padding:.3em .5em;font-size:.8rem;">📋</button>
-            <button class="danger acg-quitar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+            <button class="danger acg-quitar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">${t('quitar')}</button>
           </span>
-        </div>`).join('') || '<p class="small">Nadie marcado todavía hoy.</p>');
+        </div>`).join('') || `<p class="small">${t('nadie_marcado_hoy')}</p>`);
     $$('.acg-quitar').forEach(btn=>{ btn.onclick = async ()=>{
       await remove(ref(db,'acogida/asistencia/'+fecha+'/'+btn.dataset.id));
     };});
@@ -2315,15 +2429,15 @@ if(canAccess('acogida')){
 
     if(buscar){
       const resultados = candidatos.filter(s=>normApellido(nombreAcg(s)).includes(buscar)).slice(0,20);
-      $('#acgHabituales').innerHTML = '<p class="small" style="margin-bottom:.4rem;">Resultados</p>' + acgChipsHtml(resultados, asistHoy, frecuencia);
+      $('#acgHabituales').innerHTML = `<p class="small" style="margin-bottom:.4rem;">${t('resultados')}</p>` + acgChipsHtml(resultados, asistHoy, frecuencia);
     } else {
       const habituales = candidatos.slice()
         .filter(s=>(frecuencia[s.id]||0)>0)
         .sort((a,b)=>(frecuencia[b.id]||0)-(frecuencia[a.id]||0))
         .slice(0,12);
       $('#acgHabituales').innerHTML = habituales.length
-        ? '<p class="small" style="margin-bottom:.4rem;">⭐ Habituales</p>' + acgChipsHtml(habituales, asistHoy, frecuencia)
-        : '<p class="small">Todavía no hay histórico de habituales. Busca abajo para añadir al primer niño.</p>';
+        ? `<p class="small" style="margin-bottom:.4rem;">${t('habituales')}</p>` + acgChipsHtml(habituales, asistHoy, frecuencia)
+        : `<p class="small">${t('sin_historico')}</p>`;
     }
     $$('.chip-pick').forEach(btn=>{ btn.onclick = async ()=>{
       const id = btn.dataset.id;
@@ -2338,7 +2452,7 @@ if(canAccess('acogida')){
     const box = $('#acogidaStats'); if(!box) return;
     const fecha = todayStr();
     const hoy = Object.keys(acgAsistenciaTodo[fecha]||{}).length;
-    box.innerHTML = `<div class="stat"><div class="n">${hoy}</div><div class="l">Niños en acogida hoy</div></div>`;
+    box.innerHTML = `<div class="stat"><div class="n">${hoy}</div><div class="l">${t('ninos_acogida_hoy')}</div></div>`;
   }
 
   onValue(ref(db,'students'), snap=>{ acgStudents = snap.val()||{}; renderAcgQuickPick(); });
@@ -2360,7 +2474,7 @@ if(canAccess('acogida')){
   $('#acgMes').value = todayStr().slice(0,7);
   $('#btnAcgCalcular').addEventListener('click', ()=>{
     const mes = $('#acgMes').value;
-    if(!mes){ alert('Elige un mes.'); return; }
+    if(!mes){ alert(t('elige_mes')); return; }
     const diasPorAlumno = {};
     Object.entries(acgAsistenciaTodo).forEach(([fecha,porId])=>{
       if(fecha.slice(0,7)!==mes) return;
@@ -2378,20 +2492,20 @@ if(canAccess('acogida')){
       const fam = familiaDeAlumno[id];
       const famKey = fam ? fam.famId : 'sin-familia-'+id;
       const esSocio = fam ? fam.esSocio : false;
-      const t = acogidaTarifa(dias, esSocio);
+      const tarifa = acogidaTarifa(dias, esSocio);
       if(!porFamilia[famKey]) porFamilia[famKey] = { nombre: fam?fam.nombreFamilia:nombreAcg(s), esSocio, hijos:[], total:0 };
-      porFamilia[famKey].hijos.push({ nombre: nombreAcg(s), clase:s.clase, dias, tipo:t.tipo, importe:t.importe });
-      porFamilia[famKey].total += t.importe;
+      porFamilia[famKey].hijos.push({ nombre: nombreAcg(s), clase:s.clase, dias, tipo:tarifa.tipo, importe:tarifa.importe });
+      porFamilia[famKey].total += tarifa.importe;
     });
     const entradas = Object.entries(porFamilia).sort((a,b)=>b[1].total-a[1].total);
     const total = entradas.reduce((s,[k,f])=>s+f.total,0);
     $('#acgCierreResultado').innerHTML = `
-      <p class="small"><strong>${entradas.length}</strong> familia(s) a facturar · total <strong>${euro(total)}</strong></p>
+      <p class="small">${t('familias_facturar',{n:entradas.length,total:euro(total)})}</p>
       ${entradas.map(([famKey,f])=>`
         <div class="copyrow" style="align-items:flex-start;">
           <div>
-            <strong>${f.nombre}</strong> ${f.esSocio?'<span class="pill ok">Socio</span>':'<span class="pill warn">No socio</span>'}
-            <div class="small" style="margin-top:.2rem;">${f.hijos.map(h=>`${h.nombre} (${h.clase}): ${h.dias} días → ${h.tipo} — ${euro(h.importe)}`).join('<br>')}</div>
+            <strong>${f.nombre}</strong> ${f.esSocio?'<span class="pill ok">'+t('socio')+'</span>':'<span class="pill warn">'+t('no_socio')+'</span>'}
+            <div class="small" style="margin-top:.2rem;">${f.hijos.map(h=>`${h.nombre} (${h.clase}): ${h.dias}${t('dias_flecha')}${h.tipo} — ${euro(h.importe)}`).join('<br>')}</div>
           </div>
           <strong>${euro(f.total)}</strong>
         </div>`).join('') || '<p class="small">Nadie ha venido a acogida este mes.</p>'}
