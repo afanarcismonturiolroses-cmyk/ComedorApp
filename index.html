@@ -681,6 +681,31 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <div id="acogidaLista" style="margin-top:.6rem;"></div>
       </div>
     </details>
+
+    <details class="card" id="sec-acogida-asistencia" open>
+      <summary>Asistencia de hoy</summary>
+      <div class="details-body">
+        <div class="row">
+          <input type="date" id="acgFecha">
+          <select id="acgClaseFiltro"><option value="">Todas las clases</option></select>
+        </div>
+        <input type="text" id="acgBuscarHoy" placeholder="Buscar alumno…" style="margin-top:.5rem;">
+        <div id="acgAsistenciaLista" style="margin-top:.6rem;"></div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-acogida-cierre">
+      <summary>Cierre de mes</summary>
+      <div class="details-body">
+        <p class="small">Precios socios: 2 €/día · 15 €/medio mes (12+ días) · 20 €/mes (20+ días).<br>
+        Precios no socios: 3 €/día · 30 €/medio mes · 50 €/mes.</p>
+        <div class="row">
+          <input type="month" id="acgMes">
+          <button id="btnAcgCalcular">Calcular</button>
+        </div>
+        <div id="acgCierreResultado" style="margin-top:.8rem;"></div>
+      </div>
+    </details>
   </section>
   <!-- ============ VISTA EXTRAESCOLARES ============ -->
   <section id="view-extraescolares" class="hidden">
@@ -940,7 +965,7 @@ const AREAS = {
   },
   acogida: {
     view: 'view-acogida', icon: '🌅', label: 'Acogida matinal', subtitle: 'Alumnos inscritos y pago',
-    items: [['#sec-acogida-resumen','Resumen'],['#sec-acogida-importar','Importar inscritos'],['#sec-acogida-lista','Inscritos']]
+    items: [['#sec-acogida-resumen','Resumen'],['#sec-acogida-importar','Importar inscritos'],['#sec-acogida-lista','Inscritos'],['#sec-acogida-asistencia','Asistencia de hoy'],['#sec-acogida-cierre','Cierre de mes']]
   },
   extraescolares: {
     view: 'view-extraescolares', icon: '🎨', label: 'Extraescolares', subtitle: 'Alumnos inscritos y pago',
@@ -2169,6 +2194,99 @@ if(canAccess('socios')){
 }
 
 crearModuloServicio({ key:'acogida', path:'acogida/inscripciones', fileInputId:'fileAcogidaInscritos', label:'Acogida matinal', campo:null });
+
+/* =========================================================================
+   ACOGIDA MATINAL — asistencia diaria y cierre de mes con tarifas por días
+   ========================================================================= */
+const ACOGIDA_PRECIOS = { socio:{dia:2,medio:15,mes:20}, nosocio:{dia:3,medio:30,mes:50} };
+function acogidaTarifa(dias, esSocio){
+  const p = esSocio ? ACOGIDA_PRECIOS.socio : ACOGIDA_PRECIOS.nosocio;
+  if(dias>=20) return {tipo:'Mes completo', importe:p.mes};
+  if(dias>=12) return {tipo:'Medio mes', importe:p.medio};
+  return {tipo:dias+' día'+(dias===1?'':'s'), importe:dias*p.dia};
+}
+
+if(canAccess('acogida')){
+  let acgStudents={}, acgInscripciones={}, acgAsistenciaTodo={}, acgFamilias={};
+
+  function nombreAcg(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
+
+  function renderAcgAsistenciaLista(){
+    const fechaEl=$('#acgFecha'); if(!fechaEl) return;
+    const fecha = fechaEl.value || todayStr();
+    const claseF = $('#acgClaseFiltro')?.value || '';
+    const buscar = normApellido($('#acgBuscarHoy')?.value||'');
+    const asistHoy = acgAsistenciaTodo[fecha] || {};
+    const inscritosIds = Object.keys(acgInscripciones).filter(id=>acgInscripciones[id]?.inscrito);
+    let filas = inscritosIds.map(id=>({id, s:acgStudents[id]})).filter(x=>x.s);
+    if(claseF) filas = filas.filter(x=>x.s.clase===claseF);
+    if(buscar) filas = filas.filter(x=>normApellido(nombreAcg(x.s)).includes(buscar));
+    filas.sort((a,b)=>nombreAcg(a.s).localeCompare(nombreAcg(b.s)));
+    $('#acgAsistenciaLista').innerHTML = filas.map(({id,s})=>`
+      <div class="copyrow">
+        <span>${nombreAcg(s)} · <span class="small">${s.clase}</span></span>
+        <label class="toggle"><input type="checkbox" class="acg-vino" data-id="${id}" ${asistHoy[id]?'checked':''}><span class="slider"></span></label>
+      </div>`).join('') || '<p class="small">Nadie coincide. Comprueba que estén inscritos en Acogida.</p>';
+    $$('.acg-vino').forEach(chk=>{ chk.onchange = async ()=>{
+      const id=chk.dataset.id;
+      if(chk.checked) await set(ref(db,'acogida/asistencia/'+fecha+'/'+id), true);
+      else await remove(ref(db,'acogida/asistencia/'+fecha+'/'+id));
+    };});
+  }
+
+  onValue(ref(db,'students'), snap=>{ acgStudents = snap.val()||{}; renderAcgAsistenciaLista(); });
+  onValue(ref(db,'acogida/inscripciones'), snap=>{ acgInscripciones = snap.val()||{}; renderAcgAsistenciaLista(); });
+  onValue(ref(db,'acogida/asistencia'), snap=>{ acgAsistenciaTodo = snap.val()||{}; renderAcgAsistenciaLista(); });
+  onValue(ref(db,'socios/familias'), snap=>{ acgFamilias = snap.val()||{}; });
+
+  $('#acgFecha').value = todayStr();
+  classesList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('#acgClaseFiltro').appendChild(o); });
+  $('#acgFecha').addEventListener('change', renderAcgAsistenciaLista);
+  $('#acgClaseFiltro').addEventListener('change', renderAcgAsistenciaLista);
+  $('#acgBuscarHoy').addEventListener('input', renderAcgAsistenciaLista);
+
+  $('#acgMes').value = todayStr().slice(0,7);
+  $('#btnAcgCalcular').addEventListener('click', ()=>{
+    const mes = $('#acgMes').value;
+    if(!mes){ alert('Elige un mes.'); return; }
+    const inscritosIds = Object.keys(acgInscripciones).filter(id=>acgInscripciones[id]?.inscrito);
+    const diasPorAlumno = {};
+    Object.entries(acgAsistenciaTodo).forEach(([fecha,porId])=>{
+      if(fecha.slice(0,7)!==mes) return;
+      Object.keys(porId||{}).forEach(id=>{ diasPorAlumno[id]=(diasPorAlumno[id]||0)+1; });
+    });
+    const familiaDeAlumno = {};
+    Object.entries(acgFamilias).forEach(([famId,fam])=>{
+      Object.keys(fam.alumnos||{}).forEach(id=>{ familiaDeAlumno[id] = {famId, esSocio: !!fam.pagado, nombreFamilia: fam.nombre||famId}; });
+    });
+    const porFamilia = {};
+    inscritosIds.forEach(id=>{
+      const dias = diasPorAlumno[id]||0;
+      if(dias<=0) return;
+      const s = acgStudents[id]; if(!s) return;
+      const fam = familiaDeAlumno[id];
+      const famKey = fam ? fam.famId : 'sin-familia-'+id;
+      const esSocio = fam ? fam.esSocio : false;
+      const t = acogidaTarifa(dias, esSocio);
+      if(!porFamilia[famKey]) porFamilia[famKey] = { nombre: fam?fam.nombreFamilia:nombreAcg(s), esSocio, hijos:[], total:0 };
+      porFamilia[famKey].hijos.push({ nombre: nombreAcg(s), clase:s.clase, dias, tipo:t.tipo, importe:t.importe });
+      porFamilia[famKey].total += t.importe;
+    });
+    const entradas = Object.entries(porFamilia).sort((a,b)=>b[1].total-a[1].total);
+    const total = entradas.reduce((s,[k,f])=>s+f.total,0);
+    $('#acgCierreResultado').innerHTML = `
+      <p class="small"><strong>${entradas.length}</strong> familia(s) a facturar · total <strong>${euro(total)}</strong></p>
+      ${entradas.map(([famKey,f])=>`
+        <div class="copyrow" style="align-items:flex-start;">
+          <div>
+            <strong>${f.nombre}</strong> ${f.esSocio?'<span class="pill ok">Socio</span>':'<span class="pill warn">No socio</span>'}
+            <div class="small" style="margin-top:.2rem;">${f.hijos.map(h=>`${h.nombre} (${h.clase}): ${h.dias} días → ${h.tipo} — ${euro(h.importe)}`).join('<br>')}</div>
+          </div>
+          <strong>${euro(f.total)}</strong>
+        </div>`).join('') || '<p class="small">Nadie ha venido a acogida este mes.</p>'}
+      <p class="small" style="margin-top:1rem;">Pago por transferencia o ingreso en Banc Sabadell, ES90 0081 0213 39 0001554158.</p>`;
+  });
+}
 crearModuloServicio({ key:'extraescolares', path:'extraescolares/inscripciones', fileInputId:'fileExtraescolaresInscritos', label:'Extraescolares', campo:{clave:'actividad',etiqueta:'Actividad'} });
 crearModuloServicio({ key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal', campo:{clave:'turno',etiqueta:'Turno'} });
 
