@@ -484,12 +484,53 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     </div>
 
     <div class="card" id="sec-menu">
-      <h2>🍽️ Menú semanal</h2>
-      <p class="small">Control semanal del menú. Flor lo consulta desde su vista de monitora.</p>
-      <div class="row"><div class="flexcol"><label class="small">Semana (lunes)</label><input type="date" id="menuWeek"></div></div>
-      <div id="menuEditor"></div>
-      <button id="btnGuardarMenu" style="margin-top:.6rem;">Guardar menú</button>
-      <span id="menuStatus" class="small"></span>
+      <h2>🍽️ Gestión del menú</h2>
+      <div id="menuActivoResumen"></div>
+      <div class="row" style="margin-top:.5rem;align-items:center;">
+        <label class="small">Semana que se muestra ahora:</label>
+        <select id="menuSemanaActualSel"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select>
+      </div>
+      <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+        <button class="secondary" id="btnMenuEditar">✏️ Editar</button>
+        <button class="secondary" id="btnMenuDuplicar">📑 Duplicar</button>
+        <button class="secondary" id="btnMenuSustituir">🔁 Sustituir menú</button>
+        <button class="danger" id="btnMenuDesactivar">⛔ Desactivar</button>
+        <button id="btnMenuNuevo">➕ Nuevo menú</button>
+        <button class="secondary" id="btnMenuCargarActual">📥 Cargar menú curs 2026-2027 (el que me pasaste)</button>
+      </div>
+      <span id="menuGestionStatus" class="small"></span>
+
+      <details id="sec-menu-formulario" style="margin-top:1rem;">
+        <summary>Formulario del menú</summary>
+        <div class="details-body">
+          <div class="row">
+            <div class="flexcol"><label class="small">Nombre</label><input type="text" id="menuFormNombre"></div>
+            <div class="flexcol"><label class="small">Temporada</label><input type="text" id="menuFormTemporada" placeholder="2026-2027"></div>
+            <div class="flexcol"><label class="small">Periodo</label><input type="text" id="menuFormPeriodo" placeholder="Actual, Hivern, Primavera…"></div>
+          </div>
+          <div id="menuFormSemanas" style="margin-top:.8rem;"></div>
+          <h3 style="margin-top:1rem;">Información complementaria</h3>
+          <div class="row">
+            <div class="flexcol"><label class="small">Verdura</label><input type="text" id="menuFormVerdura"></div>
+            <div class="flexcol"><label class="small">Amanida</label><input type="text" id="menuFormAmanida"></div>
+            <div class="flexcol"><label class="small">Fruita</label><input type="text" id="menuFormFruita"></div>
+          </div>
+          <button id="btnMenuGuardarForm" style="margin-top:.8rem;">Guardar menú</button>
+          <span id="menuFormStatus" class="small"></span>
+        </div>
+      </details>
+
+      <details id="sec-menu-historico" style="margin-top:1rem;">
+        <summary>Histórico de menús <span class="count" id="menuHistoricoCount"></span></summary>
+        <div class="details-body" id="menuHistoricoLista"></div>
+      </details>
+    </div>
+
+    <div class="card" id="sec-menu-vista">
+      <h2>📋 Menú del menjador</h2>
+      <div class="row" id="menuTabs" style="flex-wrap:wrap;gap:.4rem;"></div>
+      <div id="menuVistaSemana" style="margin-top:.8rem;"></div>
+      <div id="menuVistaInfo" class="small" style="margin-top:1rem;color:var(--muted);"></div>
     </div>
 
     <div class="card" id="sec-precios">
@@ -1120,7 +1161,8 @@ const AREAS = {
     view: 'view-comedor', icon: '🍽️', label: 'Comedor', subtitle: 'Gestión del comedor escolar',
     items: [
       ['#sec-import','Importar alumnos'],
-      ['#sec-menu','Menú semanal'],
+      ['#sec-menu','Gestión del menú'],
+      ['#sec-menu-vista','Ver menú (familias)'],
       ['#sec-precios','Precios'],
       ['#sec-mes','Resumen mensual'],
       ['#sec-alumnos','Alumnos y becas'],
@@ -1213,7 +1255,7 @@ let students = {};
 let precios = { esporadico: 0, medioMes: 0, mesEntero: 0 };
 let attendanceCache = {};
 let activeDates = new Set();
-let menuWeekData = {};
+let menus = {}; let menuActivo = null; let menuActivoId = null;
 
 onValue(ref(db,'config/classes'), snap=>{
   classesList = snap.exists() ? Object.values(snap.val()) : [...CLASSES_DEFAULT];
@@ -1315,31 +1357,43 @@ function mondayOf(dateStr){
   const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day);
   return d.toISOString().slice(0,10);
 }
-function listenMenu(week){
-  onValue(ref(db,'menu/'+week), snap=>{
-    menuWeekData=snap.exists()?snap.val():{};
-    if(rol==='admin'){ renderMenuEditor(); renderDashboard(); }
+const DIES_CAT = ['dilluns','dimarts','dimecres','dijous','divendres'];
+function semanaDe(menu, numero){ return (menu?.semanas||[]).find(s=>s.numero===numero) || {dias:{}}; }
+function diaDelMenu(menu, numeroSemana, i){
+  const sem = semanaDe(menu, numeroSemana);
+  return sem.dias?.[DIES_CAT[i]] || {};
+}
+function listenMenus(){
+  onValue(ref(db,'menus'), snap=>{
+    menus = snap.val()||{};
+    const activoEntry = Object.entries(menus).find(([id,m])=>m.activo);
+    menuActivo = activoEntry ? activoEntry[1] : null;
+    menuActivoId = activoEntry ? activoEntry[0] : null;
+    if(rol==='admin'){ renderMenuActivoResumen(); renderMenuHistorico(); renderDashboard(); }
     if(rol==='monitora') renderMonitoraMenu();
     if(rol==='profesor' && claseParam) renderProfesorMenu();
+    renderMenuVista();
   });
 }
 function renderProfesorMenu(){ const target=$('#profesorMenu'); if(target) renderMenuReadOnly(target); }
 function renderMenuReadOnly(target){
-  const week=$('#menuWeek')?.value || mondayOf(todayStr());
-  const data=menuWeekData||{};
-  target.innerHTML=DAY_NAMES.map((_,i)=>{
-    const key=String(i+1); const v=data[key]||{};
-    return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${v.plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;
+  if(!menuActivo){ target.innerHTML = `<span class="small">${t('sin_definir')}</span>`; return; }
+  const num = menuActivo.semanaActual || 1;
+  target.innerHTML=DIES_CAT.map((_,i)=>{
+    const v = diaDelMenu(menuActivo, num, i);
+    const plato = v.primerPlat ? `${v.primerPlat} · ${v.segonPlat||''}` : '';
+    return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.postres?`<div class="small">${v.postres}</div>`:''}</div></div>`;
   }).join('');
-}
-function renderMenuEditor(){
-  if(rol!=='admin') return;
-  const target=$('#menuEditor'); if(!target) return;
-  target.innerHTML=DAY_NAMES.map((d,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${d}</div><div><input class="menu-plato" data-day="${i+1}" placeholder="Primer plato / segundo / postre" value="${(v.plato||'').replace(/"/g,'&quot;')}"><input class="menu-notas" data-day="${i+1}" placeholder="Notas, alérgenos, cambios…" value="${(v.notas||'').replace(/"/g,'&quot;')}" style="margin-top:.3rem"></div></div>`;}).join('');
 }
 function renderMonitoraMenu(){
   const target=$('#monitoraMenu'); if(!target) return;
-  target.innerHTML=DAY_NAMES.map((_,i)=>{const v=menuWeekData[String(i+1)]||{};return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${v.plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.notas?`<div class="small">${v.notas}</div>`:''}</div></div>`;}).join('');
+  if(!menuActivo){ target.innerHTML = `<span class="small">${t('sin_definir')}</span>`; return; }
+  const num = menuActivo.semanaActual || 1;
+  target.innerHTML=DIES_CAT.map((_,i)=>{
+    const v = diaDelMenu(menuActivo, num, i);
+    const plato = v.primerPlat ? `${v.primerPlat} · ${v.segonPlat||''}` : '';
+    return `<div class="menu-day"><div class="menu-date">${diaNombre(i)}</div><div>${plato||'<span class="small">'+t('sin_definir')+'</span>'}${v.postres?`<div class="small">${v.postres}</div>`:''}</div></div>`;
+  }).join('');
 }
 function renderMonitoraAllergies(){
   if(rol!=='monitora') return;
@@ -1353,19 +1407,183 @@ function renderMonitoraAllergies(){
 
 if(rol==='admin'){
   onValue(ref(db,'incidencias/'+todayStr()), snap=>{ incidenciasHoy = snap.val()||{}; renderDashboard(); });
-  $('#menuWeek').value=mondayOf(todayStr());
-  listenMenu($('#menuWeek').value);
-  $('#menuWeek').addEventListener('change',()=>listenMenu($('#menuWeek').value));
-  $('#btnGuardarMenu').addEventListener('click',async()=>{
-    const data={};
-    $$('#menuEditor .menu-plato').forEach(el=>{const day=el.dataset.day; const notas=$(`#menuEditor .menu-notas[data-day="${day}"]`)?.value||''; data[day]={plato:el.value.trim(),notas:notas.trim()};});
-    await set(ref(db,'menu/'+$('#menuWeek').value),data);
-    $('#menuStatus').textContent='Menú guardado ✓'; setTimeout(()=>$('#menuStatus').textContent='',1800);
+}
+listenMenus(); // todo el mundo necesita saber cuál es el menú activo (panel, profesor, monitora, vista pública)
+
+/* =========================================================================
+   GESTIÓN DEL MENÚ (solo admin) — crear, editar, duplicar, sustituir, desactivar.
+   El histórico nunca se borra: al sustituir, el anterior pasa a activo:false.
+   ========================================================================= */
+if(rol==='admin'){
+  let menuFormEditandoId = null; // null = formulario en modo "nuevo menú"
+
+  function diaLabelCat(i){ return ['Dilluns','Dimarts','Dimecres','Dijous','Divendres'][i]; }
+
+  function renderMenuActivoResumen(){
+    const box = $('#menuActivoResumen'); if(!box) return;
+    const sel = $('#menuSemanaActualSel');
+    if(!menuActivo){ box.innerHTML = '<p class="small">No hay ningún menú activo ahora mismo.</p>'; sel.style.display='none'; return; }
+    sel.style.display='';
+    box.innerHTML = `
+      <p style="margin:0;"><strong>${menuActivo.nombre||'(sin nombre)'}</strong> <span class="pill ok">ACTIVO</span></p>
+      <p class="small">Temporada: ${menuActivo.temporada||'—'} · Periodo: ${menuActivo.periodo||'—'}</p>`;
+    sel.value = String(menuActivo.semanaActual||1);
+  }
+
+  function renderMenuFormSemanas(semanas){
+    const data = semanas && semanas.length===5 ? semanas : Array.from({length:5},(_,i)=>({numero:i+1,dias:{}}));
+    $('#menuFormSemanas').innerHTML = data.map(sem=>`
+      <details class="card" style="margin-bottom:.6rem;">
+        <summary>Setmana ${sem.numero}</summary>
+        <div class="details-body">
+          ${DIES_CAT.map((dia,i)=>{
+            const v = sem.dias?.[dia] || {};
+            return `<div style="margin-bottom:.6rem;">
+              <label class="small">${diaLabelCat(i)}</label>
+              <input class="mf-primer" data-sem="${sem.numero}" data-dia="${dia}" placeholder="Primer plat" value="${(v.primerPlat||'').replace(/"/g,'&quot;')}">
+              <input class="mf-segon" data-sem="${sem.numero}" data-dia="${dia}" placeholder="Segon plat" value="${(v.segonPlat||'').replace(/"/g,'&quot;')}" style="margin-top:.25rem;">
+              <input class="mf-postres" data-sem="${sem.numero}" data-dia="${dia}" placeholder="Postres" value="${(v.postres||'').replace(/"/g,'&quot;')}" style="margin-top:.25rem;">
+            </div>`;
+          }).join('')}
+        </div>
+      </details>`).join('');
+  }
+
+  function abrirFormulario(menu, editandoId){
+    menuFormEditandoId = editandoId || null;
+    $('#menuFormNombre').value = menu?.nombre || '';
+    $('#menuFormTemporada').value = menu?.temporada || '';
+    $('#menuFormPeriodo').value = menu?.periodo || '';
+    $('#menuFormVerdura').value = menu?.informacionAdicional?.verdura || '';
+    $('#menuFormAmanida').value = menu?.informacionAdicional?.amanida || '';
+    $('#menuFormFruita').value = menu?.informacionAdicional?.fruita || '';
+    renderMenuFormSemanas(menu?.semanas);
+    $('#sec-menu-formulario').open = true;
+    $('#sec-menu-formulario').scrollIntoView({behavior:'smooth'});
+  }
+
+  function leerFormulario(){
+    const semanas = [1,2,3,4,5].map(num=>{
+      const dias = {};
+      DIES_CAT.forEach(dia=>{
+        const primerPlat = $(`.mf-primer[data-sem="${num}"][data-dia="${dia}"]`)?.value.trim() || '';
+        const segonPlat = $(`.mf-segon[data-sem="${num}"][data-dia="${dia}"]`)?.value.trim() || '';
+        const postres = $(`.mf-postres[data-sem="${num}"][data-dia="${dia}"]`)?.value.trim() || '';
+        dias[dia] = {primerPlat, segonPlat, postres};
+      });
+      return {numero:num, dias};
+    });
+    return {
+      nombre: $('#menuFormNombre').value.trim(),
+      temporada: $('#menuFormTemporada').value.trim(),
+      periodo: $('#menuFormPeriodo').value.trim(),
+      semanas,
+      informacionAdicional: {
+        verdura: $('#menuFormVerdura').value.trim(),
+        amanida: $('#menuFormAmanida').value.trim(),
+        fruita: $('#menuFormFruita').value.trim(),
+        pa: 'Pa', aigua: 'Aigua'
+      }
+    };
+  }
+
+  function renderMenuHistorico(){
+    const box = $('#menuHistoricoLista'); if(!box) return;
+    const otros = Object.entries(menus).filter(([id,m])=>!m.activo);
+    $('#menuHistoricoCount').textContent = otros.length ? `${otros.length}` : '';
+    box.innerHTML = otros.map(([id,m])=>`
+      <div class="copyrow">
+        <span><strong>${m.nombre||'(sin nombre)'}</strong> <span class="small">${m.temporada||''} · ${m.periodo||''}</span></span>
+        <div class="row" style="gap:.5rem;">
+          <button class="secondary mh-editar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Editar</button>
+          <button class="mh-activar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Activar</button>
+        </div>
+      </div>`).join('') || '<p class="small">Sin menús en el histórico.</p>';
+    $$('.mh-editar').forEach(btn=>btn.onclick = ()=> abrirFormulario(menus[btn.dataset.id], btn.dataset.id));
+    $$('.mh-activar').forEach(btn=>btn.onclick = async ()=>{
+      if(!confirm('¿Activar este menú? El menú activo actual pasará al histórico (no se borra).')) return;
+      const payload = {};
+      if(menuActivoId) payload['menus/'+menuActivoId+'/activo'] = false;
+      payload['menus/'+btn.dataset.id+'/activo'] = true;
+      await update(ref(db), payload);
+      $('#menuGestionStatus').textContent = 'Menú activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',1800);
+    });
+  }
+
+  $('#menuSemanaActualSel').addEventListener('change', async (e)=>{
+    if(!menuActivoId) return;
+    await update(ref(db,'menus/'+menuActivoId), {semanaActual: Number(e.target.value)});
+  });
+  $('#btnMenuCargarActual').addEventListener('click', async ()=>{
+    if(!confirm('¿Cargar el menú del curs 2026-2027 (5 setmanes) como nuevo menú, activarlo y archivar el actual?')) return;
+    const nuevo = {"nombre": "Menú curs 2026-2027", "temporada": "2026-2027", "periodo": "Actual", "activo": true, "semanaActual": 4, "semanas": [{"numero": 1, "dias": {"dilluns": {"primerPlat": "Crema de verdures", "segonPlat": "Truita de patates amb amanida", "postres": "Làctic"}, "dimarts": {"primerPlat": "Macarrons a la bolonyesa (carn de vedella)", "segonPlat": "Peix amb amanida", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Arròs blanc amb tomata", "segonPlat": "Salsitxes de pollastre", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Llenties amb arròs, xoriç i cap de llom", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Pèsol amb patates", "segonPlat": "Peix al forn amb all i julivert", "postres": "Fruita de temporada"}}}, {"numero": 2, "dias": {"dilluns": {"primerPlat": "Espaguetis amb tomata", "segonPlat": "Lluç amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Estofat de vedella amb patata i pastanaga", "segonPlat": "Brunyols de bacallà amb amanida", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Crema d'hortalisses, verdures i cigrons", "segonPlat": "Truita amb amanida", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Amanida de patata, pèsols, pastanaga, ou i tonyina", "segonPlat": "Pollastre rostit", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Sopa de peix", "segonPlat": "Llom arrebossat amb amanida", "postres": "Làctic"}}}, {"numero": 3, "dias": {"dilluns": {"primerPlat": "Llenties amb arròs, xoriç i cap de llom", "segonPlat": "Peix amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Sopa de pistons (brou d'hortalisses, au i vedella)", "segonPlat": "Truita de patates amb amanida", "postres": "Làctic"}, "dimecres": {"primerPlat": "Arròs amb tomata", "segonPlat": "Mandonguilles amb xampinyons i pastanaga", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Fideus a la cassola amb carn de porc i pollastre", "segonPlat": "Calamars a la romana", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Verdura, patata i pèsols", "segonPlat": "Hamburguesa de pollastre", "postres": "Fruita de temporada"}}}, {"numero": 4, "dias": {"dilluns": {"primerPlat": "Crema d'hortalisses, verdures i cigrons", "segonPlat": "Truita amb amanida", "postres": "Làctic"}, "dimarts": {"primerPlat": "Gaspatxo", "segonPlat": "Hamburguesa de vedella amb patates fregides", "postres": "Fruita de temporada"}, "dimecres": {"primerPlat": "Puré de patates", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Verdura, patata i pèsols", "segonPlat": "Peix al forn amb all i julivert", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Arròs a la cassola amb sèpia, gambetes i pollastre", "segonPlat": "Croquetes variades", "postres": "Fruita de temporada"}}}, {"numero": 5, "dias": {"dilluns": {"primerPlat": "Amanida de pasta", "segonPlat": "Truita amb amanida", "postres": "Fruita de temporada"}, "dimarts": {"primerPlat": "Sopa amb pasta (brou d'hortalisses, au i vedella)", "segonPlat": "Pollastre a la planxa amb amanida", "postres": "Làctic"}, "dimecres": {"primerPlat": "Arròs amb tomata", "segonPlat": "Mandonguilles amb xampinyons i pastanaga", "postres": "Fruita de temporada"}, "dijous": {"primerPlat": "Verdura patata i pèsols", "segonPlat": "Pollastre rostit", "postres": "Fruita de temporada"}, "divendres": {"primerPlat": "Llenties amb verdures (albergínia, pastanaga, ceba...)", "segonPlat": "Lluç amb amanida", "postres": "Fruita de temporada"}}}], "informacionAdicional": {"verdura": "pastanaga, mongeta...", "amanida": "enciam, tomata, pastanaga i olives", "fruita": "poma, pera, taronja...", "pa": "Pa", "aigua": "Aigua"}};
+    const payload = {};
+    if(menuActivoId) payload['menus/'+menuActivoId+'/activo'] = false;
+    const newRef = push(ref(db,'menus'));
+    await set(newRef, nuevo);
+    await update(ref(db), payload);
+    $('#menuGestionStatus').textContent = 'Menú cargado y activado ✓'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+  });
+  $('#btnMenuEditar').addEventListener('click', ()=>{
+    if(!menuActivo){ alert('No hay ningún menú activo que editar.'); return; }
+    abrirFormulario(menuActivo, menuActivoId);
+  });
+  $('#btnMenuNuevo').addEventListener('click', ()=> abrirFormulario(null, null));
+  $('#btnMenuDuplicar').addEventListener('click', async ()=>{
+    if(!menuActivo){ alert('No hay ningún menú activo que duplicar.'); return; }
+    const nombre = prompt('Nombre para la copia:', menuActivo.nombre+' (copia)');
+    if(!nombre) return;
+    const newRef = push(ref(db,'menus'));
+    await set(newRef, {...menuActivo, nombre, activo:false, semanaActual: menuActivo.semanaActual||1});
+    $('#menuGestionStatus').textContent = 'Duplicado ✓ — edítalo desde el histórico.'; setTimeout(()=>$('#menuGestionStatus').textContent='',2500);
+  });
+  $('#btnMenuSustituir').addEventListener('click', ()=>{
+    $('#sec-menu-historico').open = true;
+    $('#sec-menu-historico').scrollIntoView({behavior:'smooth'});
+  });
+  $('#btnMenuDesactivar').addEventListener('click', async ()=>{
+    if(!menuActivoId){ alert('No hay ningún menú activo.'); return; }
+    if(!confirm('¿Desactivar el menú activo? No se mostrará ningún menú hasta que actives otro desde el histórico.')) return;
+    await update(ref(db,'menus/'+menuActivoId), {activo:false});
+  });
+  $('#btnMenuGuardarForm').addEventListener('click', async ()=>{
+    const datos = leerFormulario();
+    if(!datos.nombre){ alert('Ponle un nombre al menú.'); return; }
+    if(menuFormEditandoId){
+      await update(ref(db,'menus/'+menuFormEditandoId), datos);
+    } else {
+      const newRef = push(ref(db,'menus'));
+      await set(newRef, {...datos, activo:false, semanaActual:1});
+    }
+    $('#menuFormStatus').textContent = 'Guardado ✓'; setTimeout(()=>$('#menuFormStatus').textContent='',1800);
   });
 }
-if(rol==='monitora'){
-  listenMenu(mondayOf(todayStr()));
+
+/* ---------------- Vista pública del menú (pestañas por semana) ---------------- */
+let menuVistaSemanaMostrada = null;
+function renderMenuVista(){
+  const tabsBox = $('#menuTabs'); if(!tabsBox) return;
+  if(!menuActivo){ tabsBox.innerHTML=''; $('#menuVistaSemana').innerHTML = `<p class="small">${t('sin_definir')}</p>`; return; }
+  if(menuVistaSemanaMostrada===null) menuVistaSemanaMostrada = menuActivo.semanaActual || 1;
+  tabsBox.innerHTML = [1,2,3,4,5].map(n=>`<button class="secondary mv-tab ${n===menuVistaSemanaMostrada?'on':''}" data-n="${n}" style="${n===menuVistaSemanaMostrada?'background:var(--sky-800);color:#fff;':''}">Setmana ${n}${n===(menuActivo.semanaActual||1)?' ★':''}</button>`).join('');
+  $$('.mv-tab').forEach(btn=>btn.onclick = ()=>{ menuVistaSemanaMostrada = Number(btn.dataset.n); renderMenuVista(); });
+  const sem = semanaDe(menuActivo, menuVistaSemanaMostrada);
+  $('#menuVistaSemana').innerHTML = DIES_CAT.map((dia,i)=>{
+    const v = sem.dias?.[dia] || {};
+    return `<div class="menu-day"><div class="menu-date">${diaLabelCatGlobal(i)}</div><div>
+      ${v.primerPlat?`🍲 ${v.primerPlat}`:''}${v.segonPlat?`<br>🍽️ ${v.segonPlat}`:''}${v.postres?`<br>🍎 ${v.postres}`:''}
+      ${!v.primerPlat&&!v.segonPlat&&!v.postres?'<span class="small">'+t('sin_definir')+'</span>':''}
+    </div></div>`;
+  }).join('');
+  const info = menuActivo.informacionAdicional || {};
+  $('#menuVistaInfo').innerHTML = [
+    info.verdura?`Verdura: ${info.verdura}`:'',
+    info.amanida?`Amanida: ${info.amanida}`:'',
+    info.fruita?`Fruita de temporada: ${info.fruita}`:'',
+    'Pa i aigua.'
+  ].filter(Boolean).join('<br>');
 }
+function diaLabelCatGlobal(i){ return ['Dilluns','Dimarts','Dimecres','Dijous','Divendres'][i]; }
 
 /* =========================================================================
    VISTA PROFESOR (bloqueada a su clase vía ?clase=)
@@ -1373,7 +1591,6 @@ if(rol==='monitora'){
 if(rol==='profesor' && claseParam){
   $('#profesorDate').value = todayStr();
   ensureListening(todayStr());
-  listenMenu(mondayOf(todayStr()));
   $('#btnNotaProfesor').addEventListener('click', ()=> pedirIncidencia('comedor', null));
 }
 
@@ -3012,13 +3229,13 @@ function renderDashboard(){
     ? alergicos.map(a=>`<div class="dash-alerta"><span><strong>${a.nombre}</strong><br><span class="small">${a.clase}</span></span><span class="pill pend">${a.alergias}</span></div>`).join('')
     : '<p class="small">Nadie marcado hoy con alergias registradas.</p>';
 
-  // Menú de hoy (de menuWeekData, ya cargado)
+  // Menú de hoy (del menú activo, semana actual marcada por admin)
   const jsDay = new Date(date+'T00:00:00').getDay();
   const idx = jsDay===0?7:jsDay;
-  const v = idx<=5 ? (menuWeekData||{})[String(idx)] : null;
+  const v = (idx<=5 && menuActivo) ? diaDelMenu(menuActivo, menuActivo.semanaActual||1, idx-1) : null;
   $('#dashMenuHoy').innerHTML = idx>5
     ? '<p class="small">Fin de semana, sin comedor.</p>'
-    : (v && v.plato ? `<p style="margin:0;">${v.plato}</p>${v.notas?`<p class="small" style="margin-top:.3rem;">${v.notas}</p>`:''}` : '<p class="small">Sin menú definido todavía para hoy.</p>');
+    : (v && v.primerPlat ? `<p style="margin:0;">${v.primerPlat} · ${v.segonPlat||''}</p>${v.postres?`<p class="small" style="margin-top:.3rem;">Postres: ${v.postres}</p>`:''}` : '<p class="small">Sin menú definido todavía para hoy.</p>');
 
   // Incidencias de hoy, de todos los módulos — con check para marcarlas resueltas
   const MODULO_ICONO = {comedor:'🍽️',acogida:'🌅',extraescolares:'🎨',casal:'⛺'};
