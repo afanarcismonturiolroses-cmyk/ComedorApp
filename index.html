@@ -736,6 +736,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <section id="view-casal" class="hidden">
     <div class="card" id="sec-casal-resumen">
       <h2>⛺ Afacasal</h2>
+      <p class="small">Socios AFA: 45 € (40 € + 5 € material) · No socios: 80 € (75 € + 5 € material)</p>
       <div class="grid-stats" id="casalStats"></div>
       <button class="secondary" id="btnNotaCasal" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
@@ -1809,7 +1810,7 @@ function nombresDeFilas(rows){
 }
 
 function crearModuloServicio(cfg){
-  // cfg: { key, path, fileInputId, campo:{clave,etiqueta} | null }
+  // cfg: { key, path, fileInputId, campo:{clave,etiqueta} | null, precioFn:(alumno)=>number | null }
   if(!canAccess(cfg.key)) return;
   let dir = {}, datos = {};
 
@@ -1819,10 +1820,17 @@ function crearModuloServicio(cfg){
   function render(){
     const inscritosIds = Object.keys(datos).filter(id=>datos[id]?.inscrito);
     const pagados = inscritosIds.filter(id=>datos[id].pagado).length;
-    statsEl.innerHTML = `
+    let statsHtml = `
       <div class="stat"><div class="n">${inscritosIds.length}</div><div class="l">Inscritos</div></div>
       <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Pagados</div></div>
       <div class="stat"><div class="n" style="color:var(--rose);">${inscritosIds.length-pagados}</div><div class="l">Sin pagar</div></div>`;
+    if(cfg.precioFn){
+      const recaudado = inscritosIds.filter(id=>datos[id].pagado).reduce((s,id)=>s+(datos[id].importe||0),0);
+      const pendiente = inscritosIds.filter(id=>!datos[id].pagado && dir[id]).reduce((s,id)=>s+cfg.precioFn(dir[id]),0);
+      statsHtml += `<div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">Recaudado</div></div>
+      <div class="stat"><div class="n" style="color:var(--amber);">${euro(pendiente)}</div><div class="l">Pendiente de cobrar</div></div>`;
+    }
+    statsEl.innerHTML = statsHtml;
     countEl.textContent = inscritosIds.length ? `${inscritosIds.length}` : '';
 
     const filtro = normApellido(buscarEl?.value||'');
@@ -1833,8 +1841,10 @@ function crearModuloServicio(cfg){
 
     listaEl.innerHTML = filas.map(({id,s,d})=>{
       const extra = cfg.campo ? ` · <span class="small">${d[cfg.campo.clave]||'—'}</span>` : '';
+      const precio = cfg.precioFn ? cfg.precioFn(s) : null;
+      const precioTxt = precio!=null ? ` · <span class="pill ${d.pagado?'ok':'warn'}">${euro(d.pagado?(d.importe??precio):precio)}</span>` : '';
       return `<div class="copyrow">
-        <span><strong>${nombreCompleto(s)}</strong> · ${s.clase}${extra}</span>
+        <span><strong>${nombreCompleto(s)}</strong> · ${s.clase}${extra}${precioTxt}</span>
         <div class="row" style="gap:.6rem;">
           <label class="toggle"><input type="checkbox" class="sv-pagado" data-key="${cfg.key}" data-id="${id}" ${d.pagado?'checked':''}><span class="slider"></span></label>
           <button class="danger sv-quitar" data-key="${cfg.key}" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
@@ -1844,8 +1854,10 @@ function crearModuloServicio(cfg){
 
     $$('.sv-pagado').forEach(chk=>{ if(chk.dataset.key!==cfg.key) return; chk.onchange = async ()=>{
       const id=chk.dataset.id;
-      if(chk.checked) await update(ref(db,cfg.path+'/'+id), {pagado:true, fechaPago:new Date().toISOString()});
-      else await update(ref(db,cfg.path+'/'+id), {pagado:false, fechaPago:null});
+      if(chk.checked){
+        const importe = cfg.precioFn && dir[id] ? cfg.precioFn(dir[id]) : undefined;
+        await update(ref(db,cfg.path+'/'+id), {pagado:true, fechaPago:new Date().toISOString(), ...(importe!=null?{importe}:{}) });
+      } else await update(ref(db,cfg.path+'/'+id), {pagado:false, fechaPago:null});
     };});
     $$('.sv-quitar').forEach(btn=>{ if(btn.dataset.key!==cfg.key) return; btn.onclick = async ()=>{
       if(!confirm('¿Quitar a este alumno de '+cfg.label+'?')) return;
@@ -2387,7 +2399,18 @@ if(canAccess('acogida')){
   });
 }
 crearModuloServicio({ key:'extraescolares', path:'extraescolares/inscripciones', fileInputId:'fileExtraescolaresInscritos', label:'Extraescolares', campo:{clave:'actividad',etiqueta:'Actividad'} });
-crearModuloServicio({ key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal', campo:{clave:'turno',etiqueta:'Turno'} });
+const CASAL_PRECIO_SOCIO = 45;   // 40€ + 5€ material
+const CASAL_PRECIO_NO_SOCIO = 80; // 75€ + 5€ material
+let casalFamiliasPrecio = {};
+if(canAccess('casal')) onValue(ref(db,'socios/familias'), snap=>{ casalFamiliasPrecio = snap.val()||{}; });
+function casalEsSocio(alumnoId){
+  return Object.values(casalFamiliasPrecio).some(f=>f.pagado && f.alumnos && f.alumnos[alumnoId]);
+}
+crearModuloServicio({
+  key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal',
+  campo:{clave:'turno',etiqueta:'Turno'},
+  precioFn: (alumno)=> casalEsSocio(alumno.id) ? CASAL_PRECIO_SOCIO : CASAL_PRECIO_NO_SOCIO
+});
 if(canAccess('extraescolares')) $('#btnNotaExtraescolares').addEventListener('click', ()=> pedirIncidencia('extraescolares', null));
 if(canAccess('casal')) $('#btnNotaCasal').addEventListener('click', ()=> pedirIncidencia('casal', null));
 
