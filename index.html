@@ -328,6 +328,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <span class="small" id="profesorResumen"></span>
       </div>
       <ul class="students" id="profesorList"></ul>
+      <button class="secondary" id="btnNotaProfesor" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
   </section>
 
@@ -371,6 +372,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <h2>Niños marcados para comer hoy</h2>
       <p class="small">Confirma quién come realmente. Si alguien iba a quedarse y al final no, desmárcalo y anota la incidencia.</p>
       <ul class="students" id="monitoraList"></ul>
+      <button class="secondary" id="btnNotaMonitora" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
   </section>
 
@@ -411,6 +413,11 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
           <h3>📅 Próximos eventos</h3>
           <div id="dashProximosEventos"></div>
         </div>
+      </div>
+
+      <div class="dash-col" style="margin-top:1rem;">
+        <h3>📋 Incidencias de hoy</h3>
+        <div id="dashIncidencias"></div>
       </div>
 
       <div class="dash-quick">
@@ -684,6 +691,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <div id="acgHabituales" style="margin-top:.7rem;"></div>
       <input type="text" id="acgBuscarHoy" placeholder="Buscar alumno para añadir…" style="margin-top:.7rem;">
       <div id="acgAsistenciaLista" style="margin-top:.6rem;"></div>
+      <button class="secondary" id="btnNotaAcogida" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
 
     <details class="card" id="sec-acogida-cierre">
@@ -704,6 +712,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     <div class="card" id="sec-extraescolares-resumen">
       <h2>🎨 Extraescolares</h2>
       <div class="grid-stats" id="extraescolaresStats"></div>
+      <button class="secondary" id="btnNotaExtraescolares" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
 
     <details class="card" id="sec-extraescolares-importar">
@@ -728,6 +737,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     <div class="card" id="sec-casal-resumen">
       <h2>⛺ Afacasal</h2>
       <div class="grid-stats" id="casalStats"></div>
+      <button class="secondary" id="btnNotaCasal" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
     </div>
 
     <details class="card" id="sec-casal-importar">
@@ -795,6 +805,7 @@ const db = getDatabase(app);
 let tesMovimientos = {};
 let tesResumen = null;
 let acgAsistenciaTodo = {}; // asistencia de Acogida matinal, para el cierre de mes y el panel de admin
+let incidenciasHoy = {}; // incidencias/<hoy>, para el panel de admin
 let socFiltroPago = null; // null=todas, true=solo pagadas, false=solo pendientes (filtro de Familias y socios)
 let fzFiltro = null; // null=todos, 'pagada', 'pendiente', 'devuelta' (filtro de Fianza de libros)
 
@@ -896,6 +907,31 @@ const CLASSES_DEFAULT = ["4t Primària", "3r Primària", "2n Primària", "1r Pri
 let OFFICIAL_STUDENTS = []; // se carga desde un archivo JSON privado (no está en GitHub)
 
 const todayStr = () => new Date().toISOString().slice(0,10);
+
+/* ---------------- Incidencias (compartida por todos los módulos) ----------------
+   incidencias/<fecha>/<id>: { modulo, alumnoId, alumnoNombre, clase, nota, creadoEn }
+   Ligada a un alumno (botón junto a su nombre) o genérica (botón "Nota"). */
+async function registrarIncidencia(modulo, alumno, nota){
+  if(!nota || !nota.trim()) return false;
+  const fecha = todayStr();
+  const newRef = push(ref(db,'incidencias/'+fecha));
+  await set(newRef, {
+    modulo,
+    alumnoId: alumno ? alumno.id : null,
+    alumnoNombre: alumno ? alumno.nombre : null,
+    clase: alumno ? alumno.clase : null,
+    nota: nota.trim(),
+    resuelta: false,
+    creadoEn: new Date().toISOString()
+  });
+  return true;
+}
+function pedirIncidencia(modulo, alumno){
+  const titulo = alumno ? `Incidencia — ${alumno.nombre}` : 'Nota / incidencia';
+  const nota = prompt(titulo+'\\n\\nDescribe qué ha pasado:', '');
+  if(nota===null || !nota.trim()) return;
+  registrarIncidencia(modulo, alumno, nota);
+}
 function skelStats(n){ return Array.from({length:n},()=>'<div class="stat skel skel-stat"></div>').join(''); }
 function skelRows(n){ return Array.from({length:n},()=>'<div class="skel-row"><div class="skel skel-line" style="width:40%;"></div><div class="skel skel-line" style="width:20%;margin-left:auto;"></div></div>').join(''); }
 function skelTableRows(n,cols){ return Array.from({length:n},()=>'<tr>'+Array.from({length:cols},()=>'<td><div class="skel skel-line"></div></td>').join('')+'</tr>').join(''); }
@@ -1201,6 +1237,7 @@ function renderMonitoraAllergies(){
 }
 
 if(rol==='admin'){
+  onValue(ref(db,'incidencias/'+todayStr()), snap=>{ incidenciasHoy = snap.val()||{}; renderDashboard(); });
   $('#menuWeek').value=mondayOf(todayStr());
   listenMenu($('#menuWeek').value);
   $('#menuWeek').addEventListener('change',()=>listenMenu($('#menuWeek').value));
@@ -1222,6 +1259,7 @@ if(rol==='profesor' && claseParam){
   $('#profesorDate').value = todayStr();
   ensureListening(todayStr());
   listenMenu(mondayOf(todayStr()));
+  $('#btnNotaProfesor').addEventListener('click', ()=> pedirIncidencia('comedor', null));
 }
 
 
@@ -1242,6 +1280,7 @@ function renderProfesorList(){
       <span><span class="name">${s.nombre} ${s.apellidos||''}</span>
         ${s.alergias ? `<span class="tag alergia">⚠ ${s.alergias}</span>`:''}
         ${s.becado ? `<span class="tag becado">Becado</span>`:''}
+        <button class="secondary btn-inc" data-id="${id}" style="padding:.2em .5em;font-size:.75rem;margin-left:.3em;">📋</button>
       </span>
       <label class="toggle"><input type="checkbox" data-id="${id}" ${checked?'checked':''}><span class="slider"></span></label>
     </li>`;
@@ -1255,6 +1294,10 @@ function renderProfesorList(){
       });
     });
   });
+  $$('#profesorList .btn-inc').forEach(btn=>{ btn.onclick = ()=>{
+    const s = classStudents[btn.dataset.id];
+    pedirIncidencia('comedor', {id:btn.dataset.id, nombre:`${s.nombre} ${s.apellidos||''}`.trim(), clase:classId});
+  };});
 }
 
 /* =========================================================================
@@ -1288,6 +1331,7 @@ function renderMonitoraSemaforo(){
 }
 
 if(rol==='monitora'){
+  $('#btnNotaMonitora').addEventListener('click', ()=> pedirIncidencia('comedor', null));
   $('#btnProtocolo').addEventListener('click', async ()=>{
     const date = $('#monitoraDate').value || todayStr();
     const st = computeDayStats(date);
@@ -1308,14 +1352,13 @@ function renderMonitoraList(){
   const date = $('#monitoraDate').value || todayStr();
   renderMonitoraSemaforo();
   renderMonitoraAllergies();
-  const dayAtt = attendanceCache[date] || {};
+  const dayAtt = attendanceCache[date] || {}; // plano: attendance/AAAA-MM-DD/ALU-0001
   const rows = [];
   let marcados=0, confirmados=0, incidencias=0, pendientes=0;
   for(const classId of Object.keys(students)){
     const classStudents = students[classId];
-    const classAtt = dayAtt[classId] || {};
     for(const id of Object.keys(classStudents)){
-      const a = classAtt[id];
+      const a = dayAtt[id];
       if(a && a.marcaProfesor){
         marcados++;
         const s = classStudents[id];
@@ -1346,7 +1389,8 @@ function renderMonitoraList(){
         <button class="secondary btn-confirma" data-class="${r.classId}" data-id="${r.id}"
           style="${r.estado==='confirmado' ? 'background:var(--forest);color:#fff;' : ''}">✓ Ha comido</button>
         <button class="secondary btn-incidencia" data-class="${r.classId}" data-id="${r.id}"
-          style="${r.estado==='incidencia' ? 'background:var(--alert);color:#fff;' : ''}">✕ Incidencia</button>
+          style="${r.estado==='incidencia' ? 'background:var(--alert);color:#fff;' : ''}">✕ No vino</button>
+        <button class="secondary btn-inc" data-id="${r.id}" data-nombre="${r.s.nombre} ${r.s.apellidos||''}" data-clase="${r.classId}" style="padding:.3em .5em;">📋</button>
       </span>
     </li>`).join('') || '<li class="small">Nadie marcado todavía.</li>';
 
@@ -1365,6 +1409,9 @@ function renderMonitoraList(){
       });
     });
   });
+  $$('#monitoraList .btn-inc').forEach(btn=>{ btn.onclick = ()=>{
+    pedirIncidencia('comedor', {id:btn.dataset.id, nombre:btn.dataset.nombre.trim(), clase:btn.dataset.clase});
+  };});
 }
 
 if(rol==='monitora'){
@@ -2229,10 +2276,17 @@ if(canAccess('acogida')){
       (filas.map(({id,s})=>`
         <div class="copyrow">
           <span>${nombreAcg(s)} · <span class="small">${s.clase}</span></span>
-          <button class="danger acg-quitar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+          <span class="row" style="gap:.3rem;">
+            <button class="secondary acg-inc" data-id="${id}" style="padding:.3em .5em;font-size:.8rem;">📋</button>
+            <button class="danger acg-quitar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+          </span>
         </div>`).join('') || '<p class="small">Nadie marcado todavía hoy.</p>');
     $$('.acg-quitar').forEach(btn=>{ btn.onclick = async ()=>{
       await remove(ref(db,'acogida/asistencia/'+fecha+'/'+btn.dataset.id));
+    };});
+    $$('.acg-inc').forEach(btn=>{ btn.onclick = ()=>{
+      const s = acgStudents[btn.dataset.id];
+      pedirIncidencia('acogida', {id:btn.dataset.id, nombre:nombreAcg(s), clase:s.clase});
     };});
   }
 
@@ -2286,6 +2340,7 @@ if(canAccess('acogida')){
 
   $('#acgFecha').value = todayStr();
   classesList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('#acgClaseFiltro').appendChild(o); });
+  $('#btnNotaAcogida').addEventListener('click', ()=> pedirIncidencia('acogida', null));
   $('#acgFecha').addEventListener('change', renderAcgQuickPick);
   $('#acgClaseFiltro').addEventListener('change', renderAcgQuickPick);
   $('#acgBuscarHoy').addEventListener('input', renderAcgQuickPick);
@@ -2333,6 +2388,8 @@ if(canAccess('acogida')){
 }
 crearModuloServicio({ key:'extraescolares', path:'extraescolares/inscripciones', fileInputId:'fileExtraescolaresInscritos', label:'Extraescolares', campo:{clave:'actividad',etiqueta:'Actividad'} });
 crearModuloServicio({ key:'casal', path:'casal/inscripciones', fileInputId:'fileCasalInscritos', label:'Afacasal', campo:{clave:'turno',etiqueta:'Turno'} });
+if(canAccess('extraescolares')) $('#btnNotaExtraescolares').addEventListener('click', ()=> pedirIncidencia('extraescolares', null));
+if(canAccess('casal')) $('#btnNotaCasal').addEventListener('click', ()=> pedirIncidencia('casal', null));
 
 /* =========================================================================
    VISTA COMUNICACIÓN — calendario de eventos y tienda
@@ -2825,6 +2882,29 @@ function renderDashboard(){
   $('#dashMenuHoy').innerHTML = idx>5
     ? '<p class="small">Fin de semana, sin comedor.</p>'
     : (v && v.plato ? `<p style="margin:0;">${v.plato}</p>${v.notas?`<p class="small" style="margin-top:.3rem;">${v.notas}</p>`:''}` : '<p class="small">Sin menú definido todavía para hoy.</p>');
+
+  // Incidencias de hoy, de todos los módulos — con check para marcarlas resueltas
+  const MODULO_ICONO = {comedor:'🍽️',acogida:'🌅',extraescolares:'🎨',casal:'⛺'};
+  const incEntries = Object.entries(incidenciasHoy||{}).sort((a,b)=>(a[1].creadoEn||'').localeCompare(b[1].creadoEn||''));
+  const abiertas = incEntries.filter(([id,i])=>!i.resuelta);
+  const resueltas = incEntries.filter(([id,i])=>i.resuelta);
+  function incRow(id,i){
+    const hora = i.creadoEn ? new Date(i.creadoEn).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="dash-alerta" style="align-items:flex-start;">
+      <label class="toggle" style="margin-top:.1rem;"><input type="checkbox" class="inc-resolver" data-id="${id}" ${i.resuelta?'checked':''}><span class="slider"></span></label>
+      <span style="${i.resuelta?'opacity:.55;text-decoration:line-through;':''}">
+        ${MODULO_ICONO[i.modulo]||'📋'} ${i.alumnoNombre?`<strong>${i.alumnoNombre}</strong> (${i.clase||''}) — `:''}${i.nota}
+        <span class="small" style="text-decoration:none;display:block;">${hora}</span>
+      </span>
+    </div>`;
+  }
+  $('#dashIncidencias').innerHTML = incEntries.length
+    ? abiertas.map(([id,i])=>incRow(id,i)).join('') + (resueltas.length ? `<p class="small" style="margin:.5rem 0 .2rem;color:var(--muted);">Resueltas (${resueltas.length})</p>` + resueltas.map(([id,i])=>incRow(id,i)).join('') : '')
+    : '<p class="small">Sin incidencias hoy.</p>';
+  $$('.inc-resolver').forEach(chk=>{ chk.onclick = (e)=>{ e.stopPropagation(); }; chk.onchange = async (e)=>{
+    e.stopPropagation();
+    await update(ref(db,'incidencias/'+todayStr()+'/'+chk.dataset.id), {resuelta:chk.checked, resueltaEn:chk.checked?new Date().toISOString():null});
+  };});
 }
 
 function renderAdminDayStats(){
