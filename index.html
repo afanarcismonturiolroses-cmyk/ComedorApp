@@ -446,6 +446,10 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <div id="enlacesList" class="hidden"></div>
     </div>
 
+  </section>
+
+  <!-- ============ VISTA COMEDOR (gestión, solo admin) ============ -->
+  <section id="view-comedor" class="hidden">
     <div class="card" id="sec-import">
       <h2>Importar lista de alumnos</h2>
       <p class="small">Excel/CSV con columnas: nombre, clase, alergias, tipo de pago (mensual/quincena/esporadico), becado (sí/no), importe beca.</p>
@@ -510,7 +514,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <p class="small">Descarga un Excel con alumnos, asistencia del mes seleccionado arriba y el resumen mensual.</p>
       <button id="btnExport">Descargar Excel</button>
     </div>
-
   </section>
 
   <!-- ============ VISTA TESORERÍA ============ -->
@@ -894,7 +897,7 @@ const rol = window.__ROL;
 const claseParam = window.__CLASE;
 
 function showSection(id, title, subtitle){
-  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal','view-comunicacion'].forEach(v=>{
+  ['view-none','view-profesor','view-profesor-noclase','view-monitora','view-admin','view-tesoreria','view-socios','view-acogida','view-extraescolares','view-casal','view-comunicacion','view-comedor'].forEach(v=>{
     $('#'+v).classList.toggle('hidden', v!==id);
   });
   $('#pageTitle').textContent = title;
@@ -950,6 +953,18 @@ const AREAS = {
   comunicacion: {
     view: 'view-comunicacion', icon: '📣', label: 'Comunicación', subtitle: 'Calendario de eventos y tienda',
     items: [['#sec-com-eventos','Calendario'],['#sec-com-tienda','Tienda']]
+  },
+  comedor: {
+    view: 'view-comedor', icon: '🍽️', label: 'Comedor', subtitle: 'Gestión del comedor escolar',
+    items: [
+      ['#sec-import','Importar alumnos'],
+      ['#sec-menu','Menú semanal'],
+      ['#sec-precios','Precios'],
+      ['#sec-mes','Resumen mensual'],
+      ['#sec-alumnos','Alumnos y becas'],
+      ['#sec-clases','Clases'],
+      ['#sec-export','Exportar datos']
+    ]
   }
 };
 // El rol admin es universal: tiene acceso a cualquier área registrada arriba,
@@ -957,17 +972,8 @@ const AREAS = {
 function canAccess(area){ return rol===area || rol==='admin'; }
 
 const ADMIN_HOME_ITEMS = [
-  {header:'General'},
-  ['#sec-enlaces','Usuarios y roles'],
-  {header:'Comedor'},
   ['#sec-inicio','Hoy de un vistazo'],
-  ['#sec-import','Importar alumnos'],
-  ['#sec-menu','Menú semanal'],
-  ['#sec-precios','Precios'],
-  ['#sec-mes','Resumen mensual'],
-  ['#sec-alumnos','Alumnos y becas'],
-  ['#sec-clases','Clases'],
-  ['#sec-export','Exportar datos']
+  ['#sec-enlaces','Usuarios y roles']
 ];
 
 function closeSideMenu(){
@@ -998,7 +1004,7 @@ function renderSideNav(items, subtitle){
   $('#btnMenuLogout').classList.remove('hidden');
 }
 function goToAdminHome(){
-  showSection('view-admin','🍽️ Comedor — Administración','Panel de la AFA');
+  showSection('view-admin','🏠 Administración — Hoy de un vistazo','Panel de la AFA');
   const supervisar = Object.entries(AREAS).map(([key,a])=>['#action:'+key, a.icon+' Supervisar '+a.label]);
   const otrasAreas = supervisar.length ? [{header:'Otras áreas'}, ...supervisar] : [];
   renderSideNav([...ADMIN_HOME_ITEMS, ...otrasAreas], 'Panel de la AFA');
@@ -1008,7 +1014,7 @@ function goToArea(key){
   const a = AREAS[key];
   const supervisando = rol==='admin';
   showSection(a.view, `${a.icon} AFA — ${a.label}${supervisando?' (supervisión)':''}`, a.subtitle);
-  renderSideNav(supervisando ? [['#action:admin','◀ Volver a Comedor'], ...a.items] : a.items, a.subtitle);
+  renderSideNav(supervisando ? [['#action:admin','◀ Volver al inicio'], ...a.items] : a.items, a.subtitle);
   window.scrollTo({top:0});
   // Algunas áreas necesitan volver a dibujarse al hacerse visibles (p. ej. gráficos Chart.js,
   // que salen en blanco si se crearon con el contenedor todavía oculto).
@@ -2740,7 +2746,10 @@ async function renderMonthStats(){
 
 /* ---------------- Exportar Excel ---------------- */
 if(rol==='admin'){
-  $('#qaSync').addEventListener('click', ()=>{ $('#sec-import').scrollIntoView({behavior:'smooth'}); });
+  $('#qaSync').addEventListener('click', ()=>{
+    goToArea('comedor');
+    setTimeout(()=>{ $('#sec-import')?.scrollIntoView({behavior:'smooth'}); }, 150);
+  });
   $('#qaRoles').addEventListener('click', ()=>{ $('#sec-enlaces').scrollIntoView({behavior:'smooth'}); });
   $('#qaPago').addEventListener('click', ()=>{
     goToArea('tesoreria');
