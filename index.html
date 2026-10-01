@@ -104,6 +104,13 @@ details.card{transition:box-shadow .2s ease;}
   font-size:.8rem;font-weight:600;padding:.3em .7em .3em .9em;border-radius:999px;margin-bottom:.6rem;}
 .filtro-chip button{background:none;border:none;color:#fff;padding:0;font-size:1rem;line-height:1;opacity:.85;}
 .filtro-chip button:hover{opacity:1;filter:none;}
+.chip-pick{background:#fff;border:1px solid var(--line);border-radius:999px;padding:.55em 1em;font-size:.85rem;
+  font-weight:600;color:var(--ink);transition:background .15s,color .15s,border-color .15s;}
+.chip-pick.on{background:var(--emerald);color:#fff;border-color:var(--emerald);}
+.chip-pick .small{opacity:.7;}
+.dash-kpi.clickable,.dash-col.clickable{cursor:pointer;transition:background .15s,transform .1s;}
+.dash-kpi.clickable:hover,.dash-col.clickable:hover{background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.1);}
+.dash-kpi.clickable:active,.dash-col.clickable:active{transform:scale(.98);}
 .stat .n{font-size:1.5rem;font-weight:700;color:var(--sky-900);}
 .stat .l{font-size:.78rem;color:var(--muted);}
 ul.students{list-style:none;margin:0;padding:0;}
@@ -388,19 +395,22 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <div class="dash-kpis" id="dashKpis"></div>
 
       <div class="dash-grid2">
-        <div class="dash-col">
+        <div class="dash-col clickable" data-nav="comedor">
           <h3>🍽️ Menú de hoy</h3>
           <div id="dashMenuHoy"></div>
         </div>
-        <div class="dash-col">
+        <div class="dash-col clickable" data-nav="comedor">
           <h3>⚠️ Alergias — quién come hoy</h3>
           <div id="dashAlergiasHoy"></div>
         </div>
-      </div>
-
-      <div class="dash-col" style="margin-top:1rem;">
-        <h3>📅 Próximos eventos</h3>
-        <div id="dashProximosEventos"></div>
+        <div class="dash-col clickable" data-nav="acogida">
+          <h3>🌅 Acogida hoy</h3>
+          <div id="dashAcogidaHoy"></div>
+        </div>
+        <div class="dash-col clickable" data-nav="comunicacion">
+          <h3>📅 Próximos eventos</h3>
+          <div id="dashProximosEventos"></div>
+        </div>
       </div>
 
       <div class="dash-quick">
@@ -665,34 +675,16 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <div class="grid-stats" id="acogidaStats"></div>
     </div>
 
-    <details class="card" id="sec-acogida-importar">
-      <summary>Importar inscritos</summary>
-      <div class="details-body">
-        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en acogida matinal. Se revisan los nombres antes de guardar nada.</p>
-        <input type="file" id="fileAcogidaInscritos">
-        <div id="acogidaImportPreview"></div>
+    <div class="card" id="sec-acogida-asistencia">
+      <h2>Niños en acogida hoy</h2>
+      <div class="row">
+        <input type="date" id="acgFecha">
+        <select id="acgClaseFiltro"><option value="">Todas las clases</option></select>
       </div>
-    </details>
-
-    <details class="card" id="sec-acogida-lista" open>
-      <summary>Inscritos <span class="count" id="acogidaCount"></span></summary>
-      <div class="details-body">
-        <div class="row"><input type="text" id="acogidaBuscar" placeholder="Buscar alumno…"></div>
-        <div id="acogidaLista" style="margin-top:.6rem;"></div>
-      </div>
-    </details>
-
-    <details class="card" id="sec-acogida-asistencia" open>
-      <summary>Asistencia de hoy</summary>
-      <div class="details-body">
-        <div class="row">
-          <input type="date" id="acgFecha">
-          <select id="acgClaseFiltro"><option value="">Todas las clases</option></select>
-        </div>
-        <input type="text" id="acgBuscarHoy" placeholder="Buscar alumno…" style="margin-top:.5rem;">
-        <div id="acgAsistenciaLista" style="margin-top:.6rem;"></div>
-      </div>
-    </details>
+      <div id="acgHabituales" style="margin-top:.7rem;"></div>
+      <input type="text" id="acgBuscarHoy" placeholder="Buscar alumno para añadir…" style="margin-top:.7rem;">
+      <div id="acgAsistenciaLista" style="margin-top:.6rem;"></div>
+    </div>
 
     <details class="card" id="sec-acogida-cierre">
       <summary>Cierre de mes</summary>
@@ -802,6 +794,9 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 let tesMovimientos = {};
 let tesResumen = null;
+let acgAsistenciaTodo = {}; // asistencia de Acogida matinal, para el cierre de mes y el panel de admin
+let socFiltroPago = null; // null=todas, true=solo pagadas, false=solo pendientes (filtro de Familias y socios)
+let fzFiltro = null; // null=todos, 'pagada', 'pendiente', 'devuelta' (filtro de Fianza de libros)
 
 const loginEmail = document.querySelector("#loginEmail");
 const loginPassword = document.querySelector("#loginPassword");
@@ -964,8 +959,8 @@ const AREAS = {
     ]
   },
   acogida: {
-    view: 'view-acogida', icon: '🌅', label: 'Acogida matinal', subtitle: 'Alumnos inscritos y pago',
-    items: [['#sec-acogida-resumen','Resumen'],['#sec-acogida-importar','Importar inscritos'],['#sec-acogida-lista','Inscritos'],['#sec-acogida-asistencia','Asistencia de hoy'],['#sec-acogida-cierre','Cierre de mes']]
+    view: 'view-acogida', icon: '🌅', label: 'Acogida matinal', subtitle: 'Asistencia diaria y cierre de mes',
+    items: [['#sec-acogida-resumen','Resumen'],['#sec-acogida-asistencia','Niños en acogida hoy'],['#sec-acogida-cierre','Cierre de mes']]
   },
   extraescolares: {
     view: 'view-extraescolares', icon: '🎨', label: 'Extraescolares', subtitle: 'Alumnos inscritos y pago',
@@ -1899,8 +1894,6 @@ if(canAccess('socios')){
 
   function nombreAlumno(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
 
-  let socFiltroPago = null; // null=todas, true=solo pagadas, false=solo pendientes
-
   function renderSociosFamilias(filtro){
     const f = normApellido(filtro||'');
     const box = $('#socFamiliasList');
@@ -2096,8 +2089,6 @@ if(canAccess('socios')){
   let fzDatos = {};
   onValue(ref(db,'socios/fianza_libros'), snap=>{ fzDatos = snap.val() || {}; renderFianzaLibros(); });
 
-  let fzFiltro = null; // null=todos, 'pagada', 'pendiente', 'devuelta'
-
   function renderFianzaLibros(){
     const box=$('#fzList'), stBox=$('#fzStats'); if(!box) return;
     const todos6e = socTodosAlumnos().filter(s=>s.clase==='6è Primària').sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
@@ -2193,10 +2184,10 @@ if(canAccess('socios')){
   });
 }
 
-crearModuloServicio({ key:'acogida', path:'acogida/inscripciones', fileInputId:'fileAcogidaInscritos', label:'Acogida matinal', campo:null });
-
 /* =========================================================================
-   ACOGIDA MATINAL — asistencia diaria y cierre de mes con tarifas por días
+   ACOGIDA MATINAL — Marta elige cada mañana de todo el alumnado (sin listas
+   previas que importar). Destaca a los habituales por frecuencia histórica.
+   El cierre de mes se calcula directamente de la asistencia real.
    ========================================================================= */
 const ACOGIDA_PRECIOS = { socio:{dia:2,medio:15,mes:20}, nosocio:{dia:3,medio:30,mes:50} };
 function acogidaTarifa(dias, esSocio){
@@ -2207,49 +2198,102 @@ function acogidaTarifa(dias, esSocio){
 }
 
 if(canAccess('acogida')){
-  let acgStudents={}, acgInscripciones={}, acgAsistenciaTodo={}, acgFamilias={};
+  let acgStudents={}, acgFamilias={};
 
   function nombreAcg(s){ return `${s.nombre||''} ${s.apellidos||''}`.trim() || s.id; }
 
-  function renderAcgAsistenciaLista(){
-    const fechaEl=$('#acgFecha'); if(!fechaEl) return;
+  function acgFrecuencias(){
+    const f={};
+    Object.values(acgAsistenciaTodo).forEach(porId=>{
+      Object.keys(porId||{}).forEach(id=>{ f[id]=(f[id]||0)+1; });
+    });
+    return f;
+  }
+
+  function acgChipsHtml(lista, asistHoy, frecuencia){
+    return '<div style="display:flex;flex-wrap:wrap;gap:.4rem;">' + lista.map(s=>{
+      const activo = !!asistHoy[s.id];
+      const f = frecuencia[s.id];
+      return `<button class="chip-pick ${activo?'on':''}" data-id="${s.id}">${nombreAcg(s)}${f?' <span class="small">('+f+')</span>':''}</button>`;
+    }).join('') + '</div>';
+  }
+
+  function renderAcgListaHoy(){
+    const fecha = $('#acgFecha').value || todayStr();
+    const claseF = $('#acgClaseFiltro')?.value || '';
+    const asistHoy = acgAsistenciaTodo[fecha] || {};
+    let filas = Object.keys(asistHoy).map(id=>({id, s:acgStudents[id]})).filter(x=>x.s);
+    if(claseF) filas = filas.filter(x=>x.s.clase===claseF);
+    filas.sort((a,b)=>nombreAcg(a.s).localeCompare(nombreAcg(b.s)));
+    $('#acgAsistenciaLista').innerHTML = `<p class="small" style="margin:.6rem 0 .3rem;">Hoy están aquí (${filas.length})</p>` +
+      (filas.map(({id,s})=>`
+        <div class="copyrow">
+          <span>${nombreAcg(s)} · <span class="small">${s.clase}</span></span>
+          <button class="danger acg-quitar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+        </div>`).join('') || '<p class="small">Nadie marcado todavía hoy.</p>');
+    $$('.acg-quitar').forEach(btn=>{ btn.onclick = async ()=>{
+      await remove(ref(db,'acogida/asistencia/'+fecha+'/'+btn.dataset.id));
+    };});
+  }
+
+  function renderAcgQuickPick(){
+    const fechaEl = $('#acgFecha'); if(!fechaEl) return;
     const fecha = fechaEl.value || todayStr();
     const claseF = $('#acgClaseFiltro')?.value || '';
     const buscar = normApellido($('#acgBuscarHoy')?.value||'');
     const asistHoy = acgAsistenciaTodo[fecha] || {};
-    const inscritosIds = Object.keys(acgInscripciones).filter(id=>acgInscripciones[id]?.inscrito);
-    let filas = inscritosIds.map(id=>({id, s:acgStudents[id]})).filter(x=>x.s);
-    if(claseF) filas = filas.filter(x=>x.s.clase===claseF);
-    if(buscar) filas = filas.filter(x=>normApellido(nombreAcg(x.s)).includes(buscar));
-    filas.sort((a,b)=>nombreAcg(a.s).localeCompare(nombreAcg(b.s)));
-    $('#acgAsistenciaLista').innerHTML = filas.map(({id,s})=>`
-      <div class="copyrow">
-        <span>${nombreAcg(s)} · <span class="small">${s.clase}</span></span>
-        <label class="toggle"><input type="checkbox" class="acg-vino" data-id="${id}" ${asistHoy[id]?'checked':''}><span class="slider"></span></label>
-      </div>`).join('') || '<p class="small">Nadie coincide. Comprueba que estén inscritos en Acogida.</p>';
-    $$('.acg-vino').forEach(chk=>{ chk.onchange = async ()=>{
-      const id=chk.dataset.id;
-      if(chk.checked) await set(ref(db,'acogida/asistencia/'+fecha+'/'+id), true);
-      else await remove(ref(db,'acogida/asistencia/'+fecha+'/'+id));
+    const frecuencia = acgFrecuencias();
+
+    let candidatos = Object.values(acgStudents).filter(s=>s.activo!==false);
+    if(claseF) candidatos = candidatos.filter(s=>s.clase===claseF);
+
+    if(buscar){
+      const resultados = candidatos.filter(s=>normApellido(nombreAcg(s)).includes(buscar)).slice(0,20);
+      $('#acgHabituales').innerHTML = '<p class="small" style="margin-bottom:.4rem;">Resultados</p>' + acgChipsHtml(resultados, asistHoy, frecuencia);
+    } else {
+      const habituales = candidatos.slice()
+        .filter(s=>(frecuencia[s.id]||0)>0)
+        .sort((a,b)=>(frecuencia[b.id]||0)-(frecuencia[a.id]||0))
+        .slice(0,12);
+      $('#acgHabituales').innerHTML = habituales.length
+        ? '<p class="small" style="margin-bottom:.4rem;">⭐ Habituales</p>' + acgChipsHtml(habituales, asistHoy, frecuencia)
+        : '<p class="small">Todavía no hay histórico de habituales. Busca abajo para añadir al primer niño.</p>';
+    }
+    $$('.chip-pick').forEach(btn=>{ btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const yaEsta = !!(acgAsistenciaTodo[fecha]||{})[id];
+      if(yaEsta) await remove(ref(db,'acogida/asistencia/'+fecha+'/'+id));
+      else await set(ref(db,'acogida/asistencia/'+fecha+'/'+id), true);
     };});
+    renderAcgListaHoy();
   }
 
-  onValue(ref(db,'students'), snap=>{ acgStudents = snap.val()||{}; renderAcgAsistenciaLista(); });
-  onValue(ref(db,'acogida/inscripciones'), snap=>{ acgInscripciones = snap.val()||{}; renderAcgAsistenciaLista(); });
-  onValue(ref(db,'acogida/asistencia'), snap=>{ acgAsistenciaTodo = snap.val()||{}; renderAcgAsistenciaLista(); });
+  function renderAcogidaStats(){
+    const box = $('#acogidaStats'); if(!box) return;
+    const fecha = todayStr();
+    const hoy = Object.keys(acgAsistenciaTodo[fecha]||{}).length;
+    box.innerHTML = `<div class="stat"><div class="n">${hoy}</div><div class="l">Niños en acogida hoy</div></div>`;
+  }
+
+  onValue(ref(db,'students'), snap=>{ acgStudents = snap.val()||{}; renderAcgQuickPick(); });
+  onValue(ref(db,'acogida/asistencia'), snap=>{
+    acgAsistenciaTodo = snap.val()||{};
+    renderAcgQuickPick();
+    renderAcogidaStats();
+    renderDashboard();
+  });
   onValue(ref(db,'socios/familias'), snap=>{ acgFamilias = snap.val()||{}; });
 
   $('#acgFecha').value = todayStr();
   classesList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('#acgClaseFiltro').appendChild(o); });
-  $('#acgFecha').addEventListener('change', renderAcgAsistenciaLista);
-  $('#acgClaseFiltro').addEventListener('change', renderAcgAsistenciaLista);
-  $('#acgBuscarHoy').addEventListener('input', renderAcgAsistenciaLista);
+  $('#acgFecha').addEventListener('change', renderAcgQuickPick);
+  $('#acgClaseFiltro').addEventListener('change', renderAcgQuickPick);
+  $('#acgBuscarHoy').addEventListener('input', renderAcgQuickPick);
 
   $('#acgMes').value = todayStr().slice(0,7);
   $('#btnAcgCalcular').addEventListener('click', ()=>{
     const mes = $('#acgMes').value;
     if(!mes){ alert('Elige un mes.'); return; }
-    const inscritosIds = Object.keys(acgInscripciones).filter(id=>acgInscripciones[id]?.inscrito);
     const diasPorAlumno = {};
     Object.entries(acgAsistenciaTodo).forEach(([fecha,porId])=>{
       if(fecha.slice(0,7)!==mes) return;
@@ -2260,7 +2304,7 @@ if(canAccess('acogida')){
       Object.keys(fam.alumnos||{}).forEach(id=>{ familiaDeAlumno[id] = {famId, esSocio: !!fam.pagado, nombreFamilia: fam.nombre||famId}; });
     });
     const porFamilia = {};
-    inscritosIds.forEach(id=>{
+    Object.keys(diasPorAlumno).forEach(id=>{
       const dias = diasPorAlumno[id]||0;
       if(dias<=0) return;
       const s = acgStudents[id]; if(!s) return;
@@ -2743,10 +2787,23 @@ function renderDashboard(){
 
   const st = computeDayStats(date);
   $('#dashKpis').innerHTML = `
-    <div class="dash-kpi"><div class="ico">🍽️</div><div class="val">${st.marcados}</div><div class="lbl">Marcados a comer hoy</div></div>
-    <div class="dash-kpi"><div class="ico">💶</div><div class="val">${euro(ingresosMes)}</div><div class="lbl">Recaudado este mes</div></div>
-    <div class="dash-kpi"><div class="ico">${sinPagar>0?'⚠️':'✅'}</div><div class="val" style="color:${sinPagar>0?'var(--rose)':'var(--emerald)'};">${sinPagar}</div><div class="lbl">Familias sin pagar la cuota</div></div>
-    <div class="dash-kpi"><div class="ico">👪</div><div class="val">${sinFamilia}</div><div class="lbl">Alumnos sin familia asignada</div></div>`;
+    <div class="dash-kpi clickable" data-nav="comedor"><div class="ico">🍽️</div><div class="val">${st.marcados}</div><div class="lbl">Marcados a comer hoy</div></div>
+    <div class="dash-kpi clickable" data-nav="tesoreria"><div class="ico">💶</div><div class="val">${euro(ingresosMes)}</div><div class="lbl">Recaudado este mes</div></div>
+    <div class="dash-kpi clickable" data-nav="socios" data-soc-filtro="pendientes"><div class="ico">${sinPagar>0?'⚠️':'✅'}</div><div class="val" style="color:${sinPagar>0?'var(--rose)':'var(--emerald)'};">${sinPagar}</div><div class="lbl">Familias sin pagar la cuota</div></div>
+    <div class="dash-kpi clickable" data-nav="socios" data-soc-filtro="sinfamilia"><div class="ico">👪</div><div class="val">${sinFamilia}</div><div class="lbl">Alumnos sin familia asignada</div></div>`;
+
+  // KPI: niños en acogida hoy (de acogida, ya cargado)
+  const enAcogidaHoy = Object.keys((acgAsistenciaTodo||{})[date]||{}).length;
+  $('#dashAcogidaHoy').innerHTML = `<p style="font-size:1.4rem;font-weight:700;margin:0;">${enAcogidaHoy}</p><p class="small">niño${enAcogidaHoy===1?'':'s'} en acogida hoy</p>`;
+
+  $$('#dashKpis .dash-kpi.clickable, .dash-grid2 .dash-col.clickable').forEach(el=>{ el.onclick = ()=>{
+    const area = el.dataset.nav;
+    if(area==='socios' && el.dataset.socFiltro) socFiltroPago = el.dataset.socFiltro==='pendientes' ? false : null;
+    goToArea(area);
+    if(area==='socios' && el.dataset.socFiltro==='sinfamilia'){
+      setTimeout(()=>{ $('#sec-soc-sugerencias')?.setAttribute('open',''); $('#sec-soc-sugerencias')?.scrollIntoView({behavior:'smooth'}); }, 150);
+    }
+  };});
 
   // Alergias de quien come hoy (marcado por profesorado, cualquier estado)
   const alergicos=[];
