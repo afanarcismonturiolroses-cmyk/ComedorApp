@@ -292,6 +292,9 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
 <div id="sideOverlay"></div>
 <aside id="sideMenu" aria-label="Menú de secciones">
   <div class="side-head"><strong>🍽️ Comedor AFA</strong><span id="sideSub"></span></div>
+  <div style="padding:.7rem .9rem 0;">
+    <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
+  </div>
   <nav id="sideNav"></nav>
   <div class="side-foot"><button id="btnMenuLogout" class="secondary hidden" style="width:100%;">Salir</button></div>
 </aside>
@@ -329,7 +332,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA PROFESOR ============ -->
   <section id="view-profesor" class="hidden">
     <div class="card">
-      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
       <input type="date" id="profesorDate" class="hidden">
       <p class="small" data-i18n="profesor_instrucciones"></p>
     </div>
@@ -355,7 +357,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA MONITORA ============ -->
   <section id="view-monitora" class="hidden">
     <div class="card">
-      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
       <div class="row" style="justify-content:space-between;">
         <div class="flexcol"><label class="small" data-i18n="fecha"></label><input type="date" id="monitoraDate"></div>
         <div class="flexcol"><label class="small" data-i18n="monitores_hoy"></label>
@@ -731,7 +732,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA ACOGIDA ============ -->
   <section id="view-acogida" class="hidden">
     <div class="card" id="sec-acogida-resumen">
-      <div class="idioma-toggle"><button data-idioma="es" class="idioma-btn">Castellano</button><button data-idioma="ca" class="idioma-btn">Català</button></div>
       <h2 data-i18n="acogida_titulo"></h2>
       <div class="grid-stats" id="acogidaStats"></div>
     </div>
@@ -820,6 +820,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <input type="text" id="comEvTitulo" placeholder="Título del evento">
         <div class="row">
           <input type="date" id="comEvFecha" style="flex:1;">
+          <input type="time" id="comEvHora" style="flex:1;">
           <input type="text" id="comEvLugar" placeholder="Lugar (opcional)" style="flex:1;">
         </div>
         <textarea id="comEvDescripcion" placeholder="Descripción (opcional)" rows="2"></textarea>
@@ -1237,13 +1238,12 @@ $('#sideOverlay').addEventListener('click', closeSideMenu);
 $('#btnMenuLogout').addEventListener('click', ()=>{ closeSideMenu(); signOut(auth); });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSideMenu(); });
 
-if(['profesor','monitora','acogida','admin'].includes(rol)){
-  aplicarIdiomaEstatico();
-  $$('.idioma-btn').forEach(btn=>{
-    btn.classList.toggle('on', btn.dataset.idioma===idioma);
-    btn.addEventListener('click', ()=> cambiarIdioma(btn.dataset.idioma));
-  });
-}
+// El selector de idioma vive en la barra lateral y funciona para cualquier rol con sesión iniciada.
+aplicarIdiomaEstatico();
+$$('.idioma-btn').forEach(btn=>{
+  btn.classList.toggle('on', btn.dataset.idioma===idioma);
+  btn.addEventListener('click', ()=> cambiarIdioma(btn.dataset.idioma));
+});
 if(rol==='profesor'){
   if(claseParam){ showSection('view-profesor','🍽️ Comedor — Profesorado', claseParam); }
   else{ showSection('view-profesor-noclase','🍽️ Comedor'); }
@@ -2785,7 +2785,7 @@ if(canAccess('comunicacion')){
       .sort((a,b)=>a[1].fecha.localeCompare(b[1].fecha))
       .slice(0,3);
     box.innerHTML = proximos.length
-      ? proximos.map(([id,e])=>`<div class="dash-alerta"><span><strong>${e.titulo}</strong>${e.lugar?' · '+e.lugar:''}</span><span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</span></div>`).join('')
+      ? proximos.map(([id,e])=>`<div class="dash-alerta"><span><strong>${e.titulo}</strong>${e.lugar?' · '+e.lugar:''}</span><span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}${e.hora?' '+e.hora+'h':''}</span></div>`).join('')
       : '<p class="small">No hay eventos próximos programados.</p>';
   }
 
@@ -2794,7 +2794,7 @@ if(canAccess('comunicacion')){
     $('#comEventosLista').innerHTML = lista.map(([id,e])=>`
       <div class="copyrow" style="align-items:flex-start;">
         <div>
-          <strong>${e.titulo}</strong> <span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</span>
+          <strong>${e.titulo}</strong> <span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}${e.hora?' · '+e.hora+'h':''}</span>
           ${e.lugar?`<div class="small">📍 ${e.lugar}</div>`:''}
           ${e.descripcion?`<div class="small" style="margin-top:.2rem;">${e.descripcion}</div>`:''}
         </div>
@@ -2836,8 +2836,8 @@ if(canAccess('comunicacion')){
     const titulo=$('#comEvTitulo').value.trim(), fecha=$('#comEvFecha').value;
     if(!titulo || !fecha){ alert('Ponle un título y una fecha al evento.'); return; }
     const newRef = push(ref(db,'eventos'));
-    await set(newRef, { titulo, fecha, lugar:$('#comEvLugar').value.trim(), descripcion:$('#comEvDescripcion').value.trim(), creadoEn:new Date().toISOString() });
-    $('#comEvTitulo').value=''; $('#comEvFecha').value=''; $('#comEvLugar').value=''; $('#comEvDescripcion').value='';
+    await set(newRef, { titulo, fecha, hora:$('#comEvHora').value||null, lugar:$('#comEvLugar').value.trim(), descripcion:$('#comEvDescripcion').value.trim(), creadoEn:new Date().toISOString() });
+    $('#comEvTitulo').value=''; $('#comEvFecha').value=''; $('#comEvHora').value=''; $('#comEvLugar').value=''; $('#comEvDescripcion').value='';
   });
 
   $('#btnComTAdd').addEventListener('click', async ()=>{
