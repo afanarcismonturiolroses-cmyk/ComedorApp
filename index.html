@@ -592,7 +592,7 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
 
     <!-- ---- Cuentas del curso (datos oficiales, agregados por categoría) ---- -->
     <details class="card" id="sec-tes-resumen" open>
-      <summary>Cuentas del curso</summary>
+      <summary data-i18n="tes_cuentas_curso"></summary>
       <div class="details-body cc-scope">
         <div id="ccSel" class="cc-selector"></div>
         <p class="cc-act" id="ccAct"></p>
@@ -600,22 +600,22 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <section class="cc-kpis" id="ccKpis"></section>
 
         <section class="cc-section">
-          <h3>¿De dónde viene y en qué se gasta el dinero?</h3>
-          <p class="small">Toca cada categoría para ver el detalle. La barra indica el peso sobre el total.</p>
+          <h3 data-i18n="tes_de_donde_viene"></h3>
+          <p class="small" data-i18n="tes_toca_categoria"></p>
           <div class="cc-grid2">
-            <div class="cc-panel"><h4 class="cc-ing">Ingresos <span class="cc-tot" id="ccTi"></span></h4><div id="ccLi"></div></div>
-            <div class="cc-panel"><h4 class="cc-gas">Gastos <span class="cc-tot" id="ccTg"></span></h4><div id="ccLg"></div></div>
+            <div class="cc-panel"><h4 class="cc-ing"><span data-i18n="tes_ingresos"></span> <span class="cc-tot" id="ccTi"></span></h4><div id="ccLi"></div></div>
+            <div class="cc-panel"><h4 class="cc-gas"><span data-i18n="tes_gastos"></span> <span class="cc-tot" id="ccTg"></span></h4><div id="ccLg"></div></div>
           </div>
         </section>
 
         <section class="cc-section">
-          <h3>Presupuesto y gasto real</h3>
+          <h3 data-i18n="tes_presupuesto_real"></h3>
           <p class="small" id="ccPnota"></p>
           <div class="cc-grid2">
             <div class="cc-panel" id="ccPt"></div>
             <div class="flexcol" style="gap:1rem;">
-              <div class="cc-panel"><h4>Previsto vs real (gastos)</h4><div class="cc-chart"><canvas id="ccC1"></canvas></div></div>
-              <div class="cc-panel"><h4>¿En qué se gasta?</h4><div class="cc-chart"><canvas id="ccC2"></canvas></div></div>
+              <div class="cc-panel"><h4 data-i18n="tes_previsto_vs_real"></h4><div class="cc-chart"><canvas id="ccC1"></canvas></div></div>
+              <div class="cc-panel"><h4 data-i18n="tes_en_que_gasta"></h4><div class="cc-chart"><canvas id="ccC2"></canvas></div></div>
             </div>
           </div>
         </section>
@@ -633,48 +633,48 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     </div>
 
     <div class="card hidden" id="sec-tes-sync">
-      <h2>Sincronizar cuentas del curso</h2>
-      <p class="small">Sube el archivo JSON con las cuentas agregadas por categoría (el mismo formato que usa la página pública "Cuentas Transparentes"). Sustituye los datos guardados.</p>
+      <h2 data-i18n="tes_sincronizar_cuentas"></h2>
+      <p class="small" data-i18n="tes_sube_json"></p>
       <input type="file" id="fileResumen">
-      <button id="btnSyncResumen" style="margin-top:.5rem;">Sincronizar cuentas</button>
+      <button id="btnSyncResumen" style="margin-top:.5rem;" data-i18n="tes_sincronizar_btn"></button>
       <span id="syncResumenStatus" class="small"></span>
     </div>
 
     <!-- ---- Movimientos (registro día a día) ---- -->
     <div class="card" id="sec-tes-inicio">
-      <h2>Resumen de movimientos</h2>
+      <h2 data-i18n="tes_resumen_movimientos"></h2>
       <div class="grid-stats" id="tesStats"></div>
     </div>
 
     <div class="card" id="sec-tes-import">
-      <h2>Importar extracto</h2>
-      <p class="small">Sube el extracto del banco en Excel o CSV. Antes de guardar nada podrás revisar las filas detectadas.</p>
+      <h2 data-i18n="tes_importar_extracto"></h2>
+      <p class="small" data-i18n="tes_sube_extracto"></p>
       <input type="file" id="fileExtracto">
       <div id="importPreview"></div>
     </div>
 
     <div class="card" id="sec-tes-manual">
-      <h2>Añadir movimiento a mano</h2>
+      <h2 data-i18n="tes_añadir_mano"></h2>
       <div class="row">
-        <div class="flexcol" style="flex:1;"><label class="small">Fecha</label><input type="date" id="tesFecha"></div>
-        <div class="flexcol" style="flex:2;"><label class="small">Concepto</label><input type="text" id="tesConcepto" placeholder="Ej. Factura material escolar"></div>
+        <div class="flexcol" style="flex:1;"><label class="small" data-i18n="fecha"></label><input type="date" id="tesFecha"></div>
+        <div class="flexcol" style="flex:2;"><label class="small" data-i18n="tes_concepto"></label><input type="text" id="tesConcepto" data-i18n-placeholder="tes_concepto_ejemplo"></div>
       </div>
       <div class="row" style="margin-top:.5rem;">
-        <div class="flexcol" style="flex:1;"><label class="small">Tipo</label>
-          <select id="tesTipo"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select>
+        <div class="flexcol" style="flex:1;"><label class="small" data-i18n="tes_tipo"></label>
+          <select id="tesTipo"><option value="ingreso" data-i18n="tes_ingreso"></option><option value="gasto" data-i18n="tes_gasto"></option></select>
         </div>
-        <div class="flexcol" style="flex:1;"><label class="small">Importe (€)</label><input type="number" id="tesImporte" step="0.01" min="0"></div>
+        <div class="flexcol" style="flex:1;"><label class="small" data-i18n="tes_importe"></label><input type="number" id="tesImporte" step="0.01" min="0"></div>
       </div>
-      <button id="btnTesAdd" style="margin-top:.6rem;">Añadir movimiento</button>
+      <button id="btnTesAdd" style="margin-top:.6rem;" data-i18n="tes_añadir_movimiento"></button>
       <span id="tesAddStatus" class="small"></span>
     </div>
 
     <details class="card" id="sec-tes-movs">
-      <summary>Movimientos <span class="count" id="tesMovsCount"></span></summary>
+      <summary><span data-i18n="tes_movimientos"></span> <span class="count" id="tesMovsCount"></span></summary>
       <div class="details-body">
         <div class="row"><select id="tesFiltroMes" style="max-width:160px;"></select></div>
         <div style="overflow-x:auto;">
-          <table id="tesTable"><thead><tr><th>Fecha</th><th>Concepto</th><th>Origen</th><th style="text-align:right;">Importe</th><th></th></tr></thead><tbody></tbody></table>
+          <table id="tesTable"><thead><tr><th data-i18n="fecha"></th><th data-i18n="tes_concepto"></th><th data-i18n="tes_origen"></th><th style="text-align:right;" data-i18n="tes_importe"></th><th></th></tr></thead><tbody></tbody></table>
         </div>
       </div>
     </details>
@@ -683,47 +683,47 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA SOCIOS ============ -->
   <section id="view-socios" class="hidden">
     <div class="card" id="sec-soc-resumen">
-      <h2>Familias y socios</h2>
-      <p class="small">Cuota única por familia: <strong>25&nbsp;€</strong>, curso 2026-2027, sea cual sea el número de hijos.</p>
+      <h2 data-i18n="soc_titulo"></h2>
+      <p class="small" id="socCuotaInfo"></p>
       <div class="grid-stats" id="socStats"></div>
     </div>
 
     <details class="card" id="sec-soc-sugerencias">
-      <summary>Crear familias a partir del alumnado <span class="count" id="socSugCount"></span></summary>
+      <summary><span data-i18n="soc_crear_familias"></span> <span class="count" id="socSugCount"></span></summary>
       <div class="details-body">
-        <p class="small">Agrupa por apellido a los alumnos que todavía no tienen familia asignada. Revisa cada grupo, quita a quien no corresponda y confirma.</p>
-        <button id="btnSocSugerir">Generar sugerencias</button>
+        <p class="small" data-i18n="soc_agrupa_apellido"></p>
+        <button id="btnSocSugerir" data-i18n="soc_generar_sugerencias"></button>
         <div id="socSugerencias" style="margin-top:.8rem;"></div>
       </div>
     </details>
 
     <details class="card" id="sec-soc-familias" open>
-      <summary>Familias <span class="count" id="socFamCount"></span></summary>
+      <summary><span data-i18n="soc_familias"></span> <span class="count" id="socFamCount"></span></summary>
       <div class="details-body">
-        <div class="row"><input type="text" id="socBuscar" placeholder="Buscar por apellido o alumno…"></div>
+        <div class="row"><input type="text" id="socBuscar" data-i18n-placeholder="soc_buscar"></div>
         <div id="socFamiliasList" style="margin-top:.6rem;"></div>
       </div>
     </details>
 
     <details class="card" id="sec-soc-importar">
-      <summary>Importar pagos</summary>
+      <summary data-i18n="soc_importar_pagos"></summary>
       <div class="details-body">
-        <h3>Cuota AFA pagada (25€/familia)</h3>
-        <p class="small">Sube una lista con el nombre de un alumno por familia que ya ha pagado. Con que aparezca uno, se marca pagada toda su familia.</p>
+        <h3 data-i18n="soc_cuota_pagada_titulo"></h3>
+        <p class="small" data-i18n="soc_cuota_pagada_texto"></p>
         <input type="file" id="fileCuotaPagada">
         <div id="cuotaPreview"></div>
 
-        <h3 style="margin-top:1.3rem;">Fianza de libros pagada (30€, solo 6è)</h3>
-        <p class="small">Sube una lista con los alumnos de 6è que ya han pagado. Cada uno paga la suya.</p>
+        <h3 style="margin-top:1.3rem;" data-i18n="soc_fianza_pagada_titulo"></h3>
+        <p class="small" data-i18n="soc_fianza_pagada_lista_texto"></p>
         <input type="file" id="fileFianzaPagada">
         <div id="fianzaPreview"></div>
       </div>
     </details>
 
     <details class="card" id="sec-soc-fianza">
-      <summary>Fianza de libros (6è Primària) <span class="count" id="fzCount"></span></summary>
+      <summary><span data-i18n="soc_fianza_titulo"></span> <span class="count" id="fzCount"></span></summary>
       <div class="details-body">
-        <p class="small">30&nbsp;€ por alumno de 6è. Se devuelve el curso que viene.</p>
+        <p class="small" data-i18n="soc_fianza_texto"></p>
         <div class="grid-stats" id="fzStats"></div>
         <div id="fzList" style="margin-top:.6rem;"></div>
       </div>
@@ -765,22 +765,22 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     <div class="card" id="sec-extraescolares-resumen">
       <h2>🎨 Extraescolares</h2>
       <div class="grid-stats" id="extraescolaresStats"></div>
-      <button class="secondary" id="btnNotaExtraescolares" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
+      <button class="secondary" id="btnNotaExtraescolares" style="margin-top:.8rem;" data-i18n="btn_nota_incidencia"></button>
     </div>
 
     <details class="card" id="sec-extraescolares-importar">
-      <summary>Importar inscritos</summary>
+      <summary data-i18n="srv_importar_inscritos"></summary>
       <div class="details-body">
-        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en extraescolares. Se revisan los nombres antes de guardar nada.</p>
+        <p class="small" data-i18n="srv_sube_lista_extraescolares"></p>
         <input type="file" id="fileExtraescolaresInscritos">
         <div id="extraescolaresImportPreview"></div>
       </div>
     </details>
 
     <details class="card" id="sec-extraescolares-lista" open>
-      <summary>Inscritos <span class="count" id="extraescolaresCount"></span></summary>
+      <summary><span data-i18n="srv_inscritos"></span> <span class="count" id="extraescolaresCount"></span></summary>
       <div class="details-body">
-        <div class="row"><input type="text" id="extraescolaresBuscar" placeholder="Buscar alumno…"></div>
+        <div class="row"><input type="text" id="extraescolaresBuscar" data-i18n-placeholder="srv_buscar_alumno"></div>
         <div id="extraescolaresLista" style="margin-top:.6rem;"></div>
       </div>
     </details>
@@ -791,22 +791,22 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <h2>⛺ Afacasal</h2>
       <p class="small">Socios AFA: 45 € (40 € + 5 € material) · No socios: 80 € (75 € + 5 € material)</p>
       <div class="grid-stats" id="casalStats"></div>
-      <button class="secondary" id="btnNotaCasal" style="margin-top:.8rem;">📋 Añadir nota / incidencia</button>
+      <button class="secondary" id="btnNotaCasal" style="margin-top:.8rem;" data-i18n="btn_nota_incidencia"></button>
     </div>
 
     <details class="card" id="sec-casal-importar">
-      <summary>Importar inscritos</summary>
+      <summary data-i18n="srv_importar_inscritos"></summary>
       <div class="details-body">
-        <p class="small">Sube una lista (Excel o CSV) con los alumnos inscritos en afacasal. Se revisan los nombres antes de guardar nada.</p>
+        <p class="small" data-i18n="srv_sube_lista_casal"></p>
         <input type="file" id="fileCasalInscritos">
         <div id="casalImportPreview"></div>
       </div>
     </details>
 
     <details class="card" id="sec-casal-lista" open>
-      <summary>Inscritos <span class="count" id="casalCount"></span></summary>
+      <summary><span data-i18n="srv_inscritos"></span> <span class="count" id="casalCount"></span></summary>
       <div class="details-body">
-        <div class="row"><input type="text" id="casalBuscar" placeholder="Buscar alumno…"></div>
+        <div class="row"><input type="text" id="casalBuscar" data-i18n-placeholder="srv_buscar_alumno"></div>
         <div id="casalLista" style="margin-top:.6rem;"></div>
       </div>
     </details>
@@ -815,29 +815,29 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
   <!-- ============ VISTA COMUNICACIÓN (calendario + tienda) ============ -->
   <section id="view-comunicacion" class="hidden">
     <div class="card" id="sec-com-eventos">
-      <h2>📅 Calendario de eventos</h2>
+      <h2>📅 <span data-i18n="com_calendario"></span></h2>
       <div class="flexcol" id="comEventoForm">
-        <input type="text" id="comEvTitulo" placeholder="Título del evento">
+        <input type="text" id="comEvTitulo" data-i18n-placeholder="com_titulo_evento">
         <div class="row">
           <input type="date" id="comEvFecha" style="flex:1;">
           <input type="time" id="comEvHora" style="flex:1;">
-          <input type="text" id="comEvLugar" placeholder="Lugar (opcional)" style="flex:1;">
+          <input type="text" id="comEvLugar" data-i18n-placeholder="com_lugar" style="flex:1;">
         </div>
-        <textarea id="comEvDescripcion" placeholder="Descripción (opcional)" rows="2"></textarea>
-        <button id="btnComEvAdd">Añadir evento</button>
+        <textarea id="comEvDescripcion" data-i18n-placeholder="com_descripcion" rows="2"></textarea>
+        <button id="btnComEvAdd" data-i18n="com_añadir_evento"></button>
       </div>
       <div id="comEventosLista" style="margin-top:1rem;"></div>
     </div>
 
     <div class="card" id="sec-com-tienda">
-      <h2>🛒 Tienda</h2>
+      <h2>🛒 <span data-i18n="com_tienda"></span></h2>
       <div class="flexcol" id="comTiendaForm">
-        <input type="text" id="comTnombre" placeholder="Nombre del artículo">
+        <input type="text" id="comTnombre" data-i18n-placeholder="com_nombre_articulo">
         <div class="row">
-          <input type="number" id="comTprecio" placeholder="Precio (€)" step="0.01" min="0" style="flex:1;">
-          <input type="text" id="comTdescripcion" placeholder="Descripción (opcional)" style="flex:2;">
+          <input type="number" id="comTprecio" data-i18n-placeholder="com_precio" step="0.01" min="0" style="flex:1;">
+          <input type="text" id="comTdescripcion" data-i18n-placeholder="com_descripcion_opcional" style="flex:2;">
         </div>
-        <button id="btnComTAdd">Añadir artículo</button>
+        <button id="btnComTAdd" data-i18n="com_añadir_articulo"></button>
       </div>
       <div id="comTiendaLista" style="margin-top:1rem;"></div>
     </div>
@@ -1047,7 +1047,41 @@ const I18N = {
     socio:'Socio', no_socio:'No socio', nadie_vino_mes:'Nadie ha venido a acogida este mes.',
     pago_transferencia:'Pago por transferencia o ingreso en Banc Sabadell, ES90 0081 0213 39 0001554158.',
     dias_flecha:' días → ', medio_mes:'Medio mes', mes_completo:'Mes completo', dia_sing:' día', dia_plural:' días',
-    dias_label:'días', no_alumnos_clase:'No hay alumnos cargados en esta clase todavía.', incidencia_nota_tag:'Incidencia', alergias_hoy_titulo:'⚠ Alergias/restricciones de hoy'
+    dias_label:'días', no_alumnos_clase:'No hay alumnos cargados en esta clase todavía.', incidencia_nota_tag:'Incidencia', alergias_hoy_titulo:'⚠ Alergias/restricciones de hoy',
+    tes_cuentas_curso:'Cuentas del curso', tes_de_donde_viene:'¿De dónde viene y en qué se gasta el dinero?',
+    tes_toca_categoria:'Toca cada categoría para ver el detalle. La barra indica el peso sobre el total.',
+    tes_ingresos:'Ingresos', tes_gastos:'Gastos', tes_presupuesto_real:'Presupuesto y gasto real',
+    tes_previsto_vs_real:'Previsto vs real (gastos)', tes_en_que_gasta:'¿En qué se gasta?',
+    tes_sincronizar_cuentas:'Sincronizar cuentas del curso',
+    tes_sube_json:'Sube el archivo JSON con las cuentas agregadas por categoría (el mismo formato que usa la página pública "Cuentas Transparentes"). Sustituye los datos guardados.',
+    tes_sincronizar_btn:'Sincronizar cuentas', tes_resumen_movimientos:'Resumen de movimientos',
+    tes_importar_extracto:'Importar extracto', tes_sube_extracto:'Sube el extracto del banco en Excel o CSV. Antes de guardar nada podrás revisar las filas detectadas.',
+    tes_añadir_mano:'Añadir movimiento a mano', tes_concepto:'Concepto', tes_concepto_ejemplo:'Ej. Factura material escolar',
+    tes_tipo:'Tipo', tes_ingreso:'Ingreso', tes_gasto:'Gasto', tes_importe:'Importe (€)',
+    tes_añadir_movimiento:'Añadir movimiento', tes_movimientos:'Movimientos', tes_origen:'Origen',
+    soc_titulo:'Familias y socios', soc_cuota_info:'Cuota única por familia: {importe} €, curso {curso}, sea cual sea el número de hijos.',
+    soc_familias_registradas:'Familias registradas', soc_han_pagado:'Han pagado', soc_sin_pagar:'Sin pagar',
+    soc_recaudado:'Recaudado este curso', soc_alumnos_sin_familia:'Alumnos sin familia',
+    soc_crear_familias:'Crear familias a partir del alumnado', soc_familias:'Familias', soc_buscar:'Buscar por apellido o alumno…',
+    soc_importar_pagos:'Importar pagos', soc_cuota_pagada_titulo:'Cuota AFA pagada (25€/familia)',
+    soc_cuota_pagada_texto:'Sube una lista con el nombre de un alumno por familia que ya ha pagado. Con que aparezca uno, se marca pagada toda su familia.',
+    soc_fianza_titulo:'Fianza de libros (6è Primària)', soc_fianza_texto:'30 € por alumno de 6è. Se devuelve el curso que viene.',
+    soc_alumnos_6e:'Alumnos de 6è', soc_fianza_pagada:'Fianza pagada', soc_ya_devueltas:'Ya devueltas',
+    soc_agrupa_apellido:'Agrupa por apellido a los alumnos que todavía no tienen familia asignada. Revisa cada grupo, quita a quien no corresponda y confirma.',
+    soc_generar_sugerencias:'Generar sugerencias', soc_fianza_pagada_titulo:'Fianza de libros pagada (30€, solo 6è)',
+    soc_fianza_pagada_lista_texto:'Sube una lista con los alumnos de 6è que ya han pagado. Cada uno paga la suya.',
+    com_calendario:'Calendario de eventos', com_titulo_evento:'Título del evento', com_lugar:'Lugar (opcional)',
+    com_descripcion:'Descripción (opcional)', com_añadir_evento:'Añadir evento', com_tienda:'Tienda',
+    com_nombre_articulo:'Nombre del artículo', com_precio:'Precio (€)', com_descripcion_opcional:'Descripción (opcional)',
+    com_añadir_articulo:'Añadir artículo',
+    srv_importar_inscritos:'Importar inscritos', srv_inscritos:'Inscritos', srv_buscar_alumno:'Buscar alumno…',
+    srv_actividad:'Actividad', srv_turno:'Turno',
+    srv_sube_lista_extraescolares:'Sube una lista (Excel o CSV) con los alumnos inscritos en extraescolares. Se revisan los nombres antes de guardar nada.',
+    srv_sube_lista_casal:'Sube una lista (Excel o CSV) con los alumnos inscritos en afacasal. Se revisan los nombres antes de guardar nada.',
+    srv_pagados:'Pagados', srv_recaudado:'Recaudado', srv_pendiente_cobrar:'Pendiente de cobrar',
+    srv_nadie_inscrito:'Nadie inscrito todavía. Importa una lista arriba.', srv_quitar:'Quitar',
+    com_borrar:'Borrar', com_sin_eventos:'Sin eventos todavía.', com_confirmar_borrar_evento:'¿Borrar este evento?',
+    com_sin_articulos:'Sin artículos todavía.', com_confirmar_borrar_articulo:'¿Borrar este artículo?'
   },
   ca: {
     cargando_menu:'Carregant menú…', sin_definir:'Sense definir', menu_semana:'🍽️ Menú de la setmana',
@@ -1085,7 +1119,41 @@ const I18N = {
     socio:'Soci', no_socio:'No soci', nadie_vino_mes:'Ningú ha vingut a l\'acollida aquest mes.',
     pago_transferencia:'Pagament per transferència o ingrés al Banc Sabadell, ES90 0081 0213 39 0001554158.',
     dias_flecha:' dies → ', medio_mes:'Mig mes', mes_completo:'Mes complet', dia_sing:' dia', dia_plural:' dies',
-    dias_label:'dies', no_alumnos_clase:'Encara no hi ha alumnes carregats en aquesta classe.', incidencia_nota_tag:'Incidència', alergias_hoy_titulo:'⚠ Al·lèrgies/restriccions d\'avui'
+    dias_label:'dies', no_alumnos_clase:'Encara no hi ha alumnes carregats en aquesta classe.', incidencia_nota_tag:'Incidència', alergias_hoy_titulo:'⚠ Al·lèrgies/restriccions d\'avui',
+    tes_cuentas_curso:'Comptes del curs', tes_de_donde_viene:'D\'on ve i en què es gasta els diners?',
+    tes_toca_categoria:'Toca cada categoria per veure el detall. La barra indica el pes sobre el total.',
+    tes_ingresos:'Ingressos', tes_gastos:'Despeses', tes_presupuesto_real:'Pressupost i despesa real',
+    tes_previsto_vs_real:'Previst vs real (despeses)', tes_en_que_gasta:'En què es gasta?',
+    tes_sincronizar_cuentas:'Sincronitzar comptes del curs',
+    tes_sube_json:'Puja l\'arxiu JSON amb els comptes agregats per categoria (el mateix format que fa servir la pàgina pública "Cuentas Transparentes"). Substitueix les dades desades.',
+    tes_sincronizar_btn:'Sincronitzar comptes', tes_resumen_movimientos:'Resum de moviments',
+    tes_importar_extracto:'Importar extracte', tes_sube_extracto:'Puja l\'extracte del banc en Excel o CSV. Abans de desar res podràs revisar les files detectades.',
+    tes_añadir_mano:'Afegir moviment a mà', tes_concepto:'Concepte', tes_concepto_ejemplo:'Ex. Factura material escolar',
+    tes_tipo:'Tipus', tes_ingreso:'Ingrés', tes_gasto:'Despesa', tes_importe:'Import (€)',
+    tes_añadir_movimiento:'Afegir moviment', tes_movimientos:'Moviments', tes_origen:'Origen',
+    soc_titulo:'Famílies i socis', soc_cuota_info:'Quota única per família: {importe} €, curs {curso}, sigui quin sigui el nombre de fills.',
+    soc_familias_registradas:'Famílies registrades', soc_han_pagado:'Han pagat', soc_sin_pagar:'Sense pagar',
+    soc_recaudado:'Recaptat aquest curs', soc_alumnos_sin_familia:'Alumnes sense família',
+    soc_crear_familias:'Crear famílies a partir de l\'alumnat', soc_familias:'Famílies', soc_buscar:'Cerca per cognom o alumne…',
+    soc_importar_pagos:'Importar pagaments', soc_cuota_pagada_titulo:'Quota AFA pagada (25€/família)',
+    soc_cuota_pagada_texto:'Puja una llista amb el nom d\'un alumne per família que ja ha pagat. Amb que aparegui un, es marca pagada tota la seva família.',
+    soc_fianza_titulo:'Fiança de llibres (6è Primària)', soc_fianza_texto:'30 € per alumne de 6è. Es retorna el curs vinent.',
+    soc_alumnos_6e:'Alumnes de 6è', soc_fianza_pagada:'Fiança pagada', soc_ya_devueltas:'Ja retornades',
+    soc_agrupa_apellido:'Agrupa per cognom els alumnes que encara no tenen família assignada. Revisa cada grup, treu qui no correspongui i confirma.',
+    soc_generar_sugerencias:'Generar suggeriments', soc_fianza_pagada_titulo:'Fiança de llibres pagada (30€, només 6è)',
+    soc_fianza_pagada_lista_texto:'Puja una llista amb els alumnes de 6è que ja han pagat. Cadascun paga la seva.',
+    com_calendario:'Calendari d\'esdeveniments', com_titulo_evento:'Títol de l\'esdeveniment', com_lugar:'Lloc (opcional)',
+    com_descripcion:'Descripció (opcional)', com_añadir_evento:'Afegir esdeveniment', com_tienda:'Botiga',
+    com_nombre_articulo:'Nom de l\'article', com_precio:'Preu (€)', com_descripcion_opcional:'Descripció (opcional)',
+    com_añadir_articulo:'Afegir article',
+    srv_importar_inscritos:'Importar inscrits', srv_inscritos:'Inscrits', srv_buscar_alumno:'Cerca alumne…',
+    srv_actividad:'Activitat', srv_turno:'Torn',
+    srv_sube_lista_extraescolares:'Puja una llista (Excel o CSV) amb els alumnes inscrits a extraescolars. Es revisen els noms abans de desar res.',
+    srv_sube_lista_casal:'Puja una llista (Excel o CSV) amb els alumnes inscrits a afacasal. Es revisen els noms abans de desar res.',
+    srv_pagados:'Pagats', srv_recaudado:'Recaptat', srv_pendiente_cobrar:'Pendent de cobrar',
+    srv_nadie_inscrito:'Encara ningú inscrit. Importa una llista a dalt.', srv_quitar:'Treu',
+    com_borrar:'Esborra', com_sin_eventos:'Encara no hi ha esdeveniments.', com_confirmar_borrar_evento:'Vols esborrar aquest esdeveniment?',
+    com_sin_articulos:'Encara no hi ha articles.', com_confirmar_borrar_articulo:'Vols esborrar aquest article?'
   }
 };
 function t(key, vars){
@@ -1097,6 +1165,8 @@ function aplicarIdiomaEstatico(){
   $$('[data-i18n]').forEach(el=>{ el.innerHTML = t(el.dataset.i18n); });
   $$('[data-i18n-placeholder]').forEach(el=>{ el.placeholder = t(el.dataset.i18nPlaceholder); });
 }
+const idiomaListeners = []; // callbacks de módulos que tienen contenido dinámico traducido (ver onIdiomaChange)
+function onIdiomaChange(fn){ idiomaListeners.push(fn); }
 async function cambiarIdioma(nuevo){
   idioma = nuevo;
   if(auth.currentUser) await set(ref(db,'idiomas/'+auth.currentUser.uid), nuevo);
@@ -1104,6 +1174,7 @@ async function cambiarIdioma(nuevo){
   if(rol==='profesor' && claseParam) renderProfesorList();
   if(rol==='monitora'){ renderMonitoraList(); renderMonitoraMenu(); }
   if(rol==='acogida'){ renderAcgQuickPick(); }
+  idiomaListeners.forEach(fn=>{ try{ fn(); }catch(e){ console.error('Error al repintar tras cambiar idioma:', e); } });
   $$('.idioma-toggle button').forEach(b=>b.classList.toggle('on', b.dataset.idioma===idioma));
 }
 
@@ -2172,19 +2243,20 @@ function crearModuloServicio(cfg){
 
   const statsEl=$('#'+cfg.key+'Stats'), listaEl=$('#'+cfg.key+'Lista'), countEl=$('#'+cfg.key+'Count'), buscarEl=$('#'+cfg.key+'Buscar');
   statsEl.innerHTML = skelStats(3); listaEl.innerHTML = skelRows(3);
+  onIdiomaChange(()=>{ render(); });
 
   function render(){
     const inscritosIds = Object.keys(datos).filter(id=>datos[id]?.inscrito);
     const pagados = inscritosIds.filter(id=>datos[id].pagado).length;
     let statsHtml = `
-      <div class="stat"><div class="n">${inscritosIds.length}</div><div class="l">Inscritos</div></div>
-      <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Pagados</div></div>
-      <div class="stat"><div class="n" style="color:var(--rose);">${inscritosIds.length-pagados}</div><div class="l">Sin pagar</div></div>`;
+      <div class="stat"><div class="n">${inscritosIds.length}</div><div class="l">${t('srv_inscritos')}</div></div>
+      <div class="stat"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">${t('srv_pagados')}</div></div>
+      <div class="stat"><div class="n" style="color:var(--rose);">${inscritosIds.length-pagados}</div><div class="l">${t('soc_sin_pagar')}</div></div>`;
     if(cfg.precioFn){
       const recaudado = inscritosIds.filter(id=>datos[id].pagado).reduce((s,id)=>s+(datos[id].importe||0),0);
       const pendiente = inscritosIds.filter(id=>!datos[id].pagado && dir[id]).reduce((s,id)=>s+cfg.precioFn(dir[id]),0);
-      statsHtml += `<div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">Recaudado</div></div>
-      <div class="stat"><div class="n" style="color:var(--amber);">${euro(pendiente)}</div><div class="l">Pendiente de cobrar</div></div>`;
+      statsHtml += `<div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">${t('srv_recaudado')}</div></div>
+      <div class="stat"><div class="n" style="color:var(--amber);">${euro(pendiente)}</div><div class="l">${t('srv_pendiente_cobrar')}</div></div>`;
     }
     statsEl.innerHTML = statsHtml;
     countEl.textContent = inscritosIds.length ? `${inscritosIds.length}` : '';
@@ -2203,10 +2275,10 @@ function crearModuloServicio(cfg){
         <span><strong>${nombreCompleto(s)}</strong> · ${s.clase}${extra}${precioTxt}</span>
         <div class="row" style="gap:.6rem;">
           <label class="toggle"><input type="checkbox" class="sv-pagado" data-key="${cfg.key}" data-id="${id}" ${d.pagado?'checked':''}><span class="slider"></span></label>
-          <button class="danger sv-quitar" data-key="${cfg.key}" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Quitar</button>
+          <button class="danger sv-quitar" data-key="${cfg.key}" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">${t('srv_quitar')}</button>
         </div>
       </div>`;
-    }).join('') || '<p class="small">Nadie inscrito todavía. Importa una lista arriba.</p>';
+    }).join('') || `<p class="small">${t('srv_nadie_inscrito')}</p>`;
 
     $$('.sv-pagado').forEach(chk=>{ if(chk.dataset.key!==cfg.key) return; chk.onchange = async ()=>{
       const id=chk.dataset.id;
@@ -2272,6 +2344,7 @@ function socAlumnosAsignados(){
 }
 
 if(canAccess('socios')){
+  onIdiomaChange(()=>{ renderSociosAll(); });
   $('#socFamiliasList').innerHTML = skelRows(3);
   $('#socStats').innerHTML = skelStats(3);
   onValue(ref(db,'students'), snap=>{
@@ -2291,12 +2364,14 @@ if(canAccess('socios')){
     const recaudado = pagadas*CUOTA_SOCIOS;
     const totalAlumnos = socTodosAlumnos().length;
     const sinAsignar = totalAlumnos - socAlumnosAsignados().size;
+    const infoEl = $('#socCuotaInfo');
+    if(infoEl) infoEl.innerHTML = t('soc_cuota_info',{importe:CUOTA_SOCIOS,curso:CURSO_SOCIOS}).replace(CUOTA_SOCIOS+' €','<strong>'+CUOTA_SOCIOS+'&nbsp;€</strong>');
     $('#socStats').innerHTML = `
-      <div class="stat clickable" data-soc-filtro="todas"><div class="n">${familias.length}</div><div class="l">Familias registradas</div></div>
-      <div class="stat clickable" data-soc-filtro="pagadas"><div class="n" style="color:var(--emerald);">${pagadas}</div><div class="l">Han pagado</div></div>
-      <div class="stat clickable" data-soc-filtro="pendientes"><div class="n" style="color:var(--rose);">${familias.length-pagadas}</div><div class="l">Sin pagar</div></div>
-      <div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">Recaudado este curso</div></div>
-      <div class="stat clickable" data-soc-filtro="sinfamilia"><div class="n" style="color:${sinAsignar>0?'var(--amber)':'var(--emerald)'};">${sinAsignar}</div><div class="l">Alumnos sin familia</div></div>`;
+      <div class="stat clickable" data-soc-filtro="todas"><div class="n">${familias.length}</div><div class="l">${t('soc_familias_registradas')}</div></div>
+      <div class="stat clickable" data-soc-filtro="pagadas"><div class="n" style="color:var(--emerald);">${pagadas}</div><div class="l">${t('soc_han_pagado')}</div></div>
+      <div class="stat clickable" data-soc-filtro="pendientes"><div class="n" style="color:var(--rose);">${familias.length-pagadas}</div><div class="l">${t('soc_sin_pagar')}</div></div>
+      <div class="stat"><div class="n">${euro(recaudado)}</div><div class="l">${t('soc_recaudado')}</div></div>
+      <div class="stat clickable" data-soc-filtro="sinfamilia"><div class="n" style="color:${sinAsignar>0?'var(--amber)':'var(--emerald)'};">${sinAsignar}</div><div class="l">${t('soc_alumnos_sin_familia')}</div></div>`;
     $$('#socStats .stat.clickable').forEach(el=>el.addEventListener('click', ()=>{
       const tipo = el.dataset.socFiltro;
       if(tipo==='sinfamilia'){ $('#sec-soc-sugerencias').open=true; $('#sec-soc-sugerencias').scrollIntoView({behavior:'smooth'}); return; }
@@ -2511,10 +2586,10 @@ if(canAccess('socios')){
     const devueltos = todos6e.filter(s=>fzDatos[s.id]?.devuelto).length;
     $('#fzCount').textContent = todos6e.length ? `${pagados}/${todos6e.length}` : '';
     stBox.innerHTML = `
-      <div class="stat clickable" data-fz-filtro="todos"><div class="n">${todos6e.length}</div><div class="l">Alumnos de 6è</div></div>
-      <div class="stat clickable" data-fz-filtro="pagada"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">Fianza pagada</div></div>
-      <div class="stat clickable" data-fz-filtro="pendiente"><div class="n" style="color:var(--rose);">${todos6e.length-pagados}</div><div class="l">Sin pagar</div></div>
-      <div class="stat clickable" data-fz-filtro="devuelta"><div class="n">${devueltos}</div><div class="l">Ya devueltas</div></div>`;
+      <div class="stat clickable" data-fz-filtro="todos"><div class="n">${todos6e.length}</div><div class="l">${t('soc_alumnos_6e')}</div></div>
+      <div class="stat clickable" data-fz-filtro="pagada"><div class="n" style="color:var(--emerald);">${pagados}</div><div class="l">${t('soc_fianza_pagada')}</div></div>
+      <div class="stat clickable" data-fz-filtro="pendiente"><div class="n" style="color:var(--rose);">${todos6e.length-pagados}</div><div class="l">${t('soc_sin_pagar')}</div></div>
+      <div class="stat clickable" data-fz-filtro="devuelta"><div class="n">${devueltos}</div><div class="l">${t('soc_ya_devueltas')}</div></div>`;
     $$('#fzStats .stat.clickable').forEach(el=>el.addEventListener('click', ()=>{
       fzFiltro = el.dataset.fzFiltro==='todos' ? null : el.dataset.fzFiltro;
       renderFianzaLibros();
@@ -2774,6 +2849,7 @@ if(canAccess('casal')) $('#btnNotaCasal').addEventListener('click', ()=> pedirIn
    ========================================================================= */
 if(canAccess('comunicacion')){
   let comEventos = {}, comTienda = {};
+  onIdiomaChange(()=>{ renderEventos(); renderTienda(); });
   $('#comEventosLista').innerHTML = skelRows(2);
   $('#comTiendaLista').innerHTML = skelRows(2);
 
@@ -2790,18 +2866,19 @@ if(canAccess('comunicacion')){
   }
 
   function renderEventos(){
+    const localeFecha = idioma==='ca' ? 'ca-ES' : 'es-ES';
     const lista = Object.entries(comEventos).sort((a,b)=>b[1].fecha.localeCompare(a[1].fecha));
     $('#comEventosLista').innerHTML = lista.map(([id,e])=>`
       <div class="copyrow" style="align-items:flex-start;">
         <div>
-          <strong>${e.titulo}</strong> <span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}${e.hora?' · '+e.hora+'h':''}</span>
+          <strong>${e.titulo}</strong> <span class="pill info">${new Date(e.fecha+'T00:00:00').toLocaleDateString(localeFecha,{day:'numeric',month:'long',year:'numeric'})}${e.hora?' · '+e.hora+'h':''}</span>
           ${e.lugar?`<div class="small">📍 ${e.lugar}</div>`:''}
           ${e.descripcion?`<div class="small" style="margin-top:.2rem;">${e.descripcion}</div>`:''}
         </div>
-        <button class="danger com-ev-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Borrar</button>
-      </div>`).join('') || '<p class="small">Sin eventos todavía.</p>';
+        <button class="danger com-ev-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">${t('com_borrar')}</button>
+      </div>`).join('') || `<p class="small">${t('com_sin_eventos')}</p>`;
     $$('.com-ev-borrar').forEach(btn=>btn.addEventListener('click', async ()=>{
-      if(!confirm('¿Borrar este evento?')) return;
+      if(!confirm(t('com_confirmar_borrar_evento'))) return;
       await remove(ref(db,'eventos/'+btn.dataset.id));
     }));
     renderEventosProximos();
@@ -2817,14 +2894,14 @@ if(canAccess('comunicacion')){
         </div>
         <div class="row" style="gap:.6rem;">
           <label class="toggle"><input type="checkbox" class="com-t-activo" data-id="${id}" ${it.activo!==false?'checked':''}><span class="slider"></span></label>
-          <button class="danger com-t-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">Borrar</button>
+          <button class="danger com-t-borrar" data-id="${id}" style="padding:.3em .6em;font-size:.8rem;">${t('com_borrar')}</button>
         </div>
-      </div>`).join('') || '<p class="small">Sin artículos todavía.</p>';
+      </div>`).join('') || `<p class="small">${t('com_sin_articulos')}</p>`;
     $$('.com-t-activo').forEach(chk=>chk.addEventListener('change', async ()=>{
       await update(ref(db,'tienda/'+chk.dataset.id), {activo:chk.checked});
     }));
     $$('.com-t-borrar').forEach(btn=>btn.addEventListener('click', async ()=>{
-      if(!confirm('¿Borrar este artículo?')) return;
+      if(!confirm(t('com_confirmar_borrar_articulo'))) return;
       await remove(ref(db,'tienda/'+btn.dataset.id));
     }));
   }
