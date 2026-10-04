@@ -2551,11 +2551,14 @@ if(canAccess('socios')){
 
     // Determinar familia destino por fila: si algún hijo ya tiene familia, se usa esa; si no, se crea una nueva con todos los hijos emparejados sin ambigüedad.
     let nuevasFamilias=0, familiasActualizadas=0, hijosSinMatch=0, hijosAmbiguos=0;
+    const nombresSinMatch=[], nombresAmbiguos=[];
     const resumenFilas = filasProcesadas.map(fila=>{
       const matcheados = fila.hijos.filter(h=>h.candidatos.length===1);
       const ambiguos = fila.hijos.filter(h=>h.candidatos.length>1);
       const sinMatch = fila.hijos.filter(h=>h.candidatos.length===0);
       hijosAmbiguos += ambiguos.length; hijosSinMatch += sinMatch.length;
+      sinMatch.forEach(h=>nombresSinMatch.push(h.textoOriginal+' (tutor: '+fila.tutor.nombre+')'));
+      ambiguos.forEach(h=>nombresAmbiguos.push(h.textoOriginal+' (tutor: '+fila.tutor.nombre+')'));
       const idsMatcheados = matcheados.map(h=>h.candidatos[0].id);
       const familiaExistente = Object.entries(socFamilias).find(([id,f])=>idsMatcheados.some(aid=>f.alumnos && f.alumnos[aid]));
       return { ...fila, matcheados, ambiguos, sinMatch, familiaExistenteId: familiaExistente?familiaExistente[0]:null };
@@ -2564,8 +2567,8 @@ if(canAccess('socios')){
 
     box.innerHTML = `
       <p class="small">${nuevasFamilias} familia(s) nuevas se crearán, ${familiasActualizadas} familia(s) existentes recibirán el contacto del tutor.</p>
-      ${hijosAmbiguos?`<p class="small" style="color:var(--amber-text);">${hijosAmbiguos} hijo(s) con nombre ambiguo, revisa a mano.</p>`:''}
-      ${hijosSinMatch?`<p class="small" style="color:var(--rose-text);">${hijosSinMatch} hijo(s) no reconocidos en el alumnado.</p>`:''}
+      ${hijosAmbiguos?`<p class="small" style="color:var(--amber-text);">${hijosAmbiguos} hijo(s) con nombre ambiguo, revisa a mano: ${nombresAmbiguos.join(', ')}</p>`:''}
+      ${hijosSinMatch?`<p class="small" style="color:var(--rose-text);">${hijosSinMatch} hijo(s) no reconocidos en el alumnado: ${nombresSinMatch.join(', ')}</p>`:''}
       <details style="margin-top:.5rem;"><summary class="small">Ver detalle fila a fila</summary>
         ${resumenFilas.map(f=>`<div class="small" style="padding:.3rem 0;border-bottom:1px solid var(--line);">
           <strong>${f.tutor.nombre}</strong> — ${f.matcheados.map(h=>h.candidatos[0].nombre+' '+h.candidatos[0].apellidos).join(', ')||'—'}
