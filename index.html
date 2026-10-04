@@ -688,15 +688,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <div class="grid-stats" id="socStats"></div>
     </div>
 
-    <details class="card" id="sec-soc-sugerencias">
-      <summary><span data-i18n="soc_crear_familias"></span> <span class="count" id="socSugCount"></span></summary>
-      <div class="details-body">
-        <p class="small" data-i18n="soc_agrupa_apellido"></p>
-        <button id="btnSocSugerir" data-i18n="soc_generar_sugerencias"></button>
-        <div id="socSugerencias" style="margin-top:.8rem;"></div>
-      </div>
-    </details>
-
     <details class="card" id="sec-soc-familias" open>
       <summary><span data-i18n="soc_familias"></span> <span class="count" id="socFamCount"></span></summary>
       <div class="details-body">
@@ -710,6 +701,30 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
             <th>Familia</th><th>Hijos (clase)</th><th>Tutores</th><th>Pago</th><th></th>
           </tr></thead><tbody id="socFamiliasList"></tbody></table>
         </div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-soc-fianza">
+      <summary><span data-i18n="soc_fianza_titulo"></span> <span class="count" id="fzCount"></span></summary>
+      <div class="details-body">
+        <p class="small" data-i18n="soc_fianza_texto"></p>
+        <div class="grid-stats" id="fzStats"></div>
+        <div class="row"><input type="text" id="fzBuscar" placeholder="Buscar alumno…"></div>
+        <div id="fzFiltroChip"></div>
+        <div style="overflow-x:auto;margin-top:.6rem;">
+          <table id="fzTable"><thead><tr>
+            <th>Alumno</th><th>Pagada</th><th>Devuelta</th>
+          </tr></thead><tbody id="fzList"></tbody></table>
+        </div>
+      </div>
+    </details>
+
+    <details class="card" id="sec-soc-sugerencias">
+      <summary><span data-i18n="soc_crear_familias"></span> <span class="count" id="socSugCount"></span></summary>
+      <div class="details-body">
+        <p class="small" data-i18n="soc_agrupa_apellido"></p>
+        <button id="btnSocSugerir" data-i18n="soc_generar_sugerencias"></button>
+        <div id="socSugerencias" style="margin-top:.8rem;"></div>
       </div>
     </details>
 
@@ -734,15 +749,6 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
         <p class="small" data-i18n="soc_fianza_pagada_lista_texto"></p>
         <input type="file" id="fileFianzaPagada">
         <div id="fianzaPreview"></div>
-      </div>
-    </details>
-
-    <details class="card" id="sec-soc-fianza">
-      <summary><span data-i18n="soc_fianza_titulo"></span> <span class="count" id="fzCount"></span></summary>
-      <div class="details-body">
-        <p class="small" data-i18n="soc_fianza_texto"></p>
-        <div class="grid-stats" id="fzStats"></div>
-        <div id="fzList" style="margin-top:.6rem;"></div>
       </div>
     </details>
   </section>
@@ -1231,11 +1237,11 @@ const AREAS = {
     subtitle: 'Cuota de socio por familia',
     items: [
       ['#sec-soc-resumen','Resumen'],
-      ['#sec-soc-sugerencias','Crear familias'],
       ['#sec-soc-familias','Familias'],
+      ['#sec-soc-fianza','Fianza de libros'],
+      ['#sec-soc-sugerencias','Crear familias'],
       ['#sec-soc-tutores','Importar tutores'],
-      ['#sec-soc-importar','Importar pagos'],
-      ['#sec-soc-fianza','Fianza de libros']
+      ['#sec-soc-importar','Importar pagos']
     ]
   },
   acogida: {
@@ -2695,6 +2701,7 @@ if(canAccess('socios')){
     classesList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('#socFiltroClase').appendChild(o); });
   }
   $('#socFiltroClase').addEventListener('change', ()=>renderSociosFamilias($('#socBuscar').value));
+  $('#fzBuscar').addEventListener('input', renderFianzaLibros);
 
   /* -------- Fianza de libros (30€, solo 6è Primària, se devuelve el curso siguiente) -------- */
   let fzDatos = {};
@@ -2702,6 +2709,7 @@ if(canAccess('socios')){
 
   function renderFianzaLibros(){
     const box=$('#fzList'), stBox=$('#fzStats'); if(!box) return;
+    const texto = normApellido($('#fzBuscar')?.value||'');
     const todos6e = socTodosAlumnos().filter(s=>s.clase==='6è Primària').sort((a,b)=>nombreAlumno(a).localeCompare(nombreAlumno(b)));
     const pagados = todos6e.filter(s=>fzDatos[s.id]?.pagado).length;
     const devueltos = todos6e.filter(s=>fzDatos[s.id]?.devuelto).length;
@@ -2717,25 +2725,25 @@ if(canAccess('socios')){
       $('#sec-soc-fianza').open=true;
       $('#fzList').scrollIntoView({behavior:'smooth'});
     }));
-    if(!todos6e.length){ box.innerHTML='<p class="small">No hay alumnos en 6è Primària todavía.</p>'; return; }
-    const alumnos6e = !fzFiltro ? todos6e : todos6e.filter(s=>{
+    if(!todos6e.length){ box.innerHTML='<tr><td colspan="3" class="small">No hay alumnos en 6è Primària todavía.</td></tr>'; return; }
+    let alumnos6e = !fzFiltro ? todos6e : todos6e.filter(s=>{
       const f = fzDatos[s.id]||{};
       if(fzFiltro==='pagada') return !!f.pagado;
       if(fzFiltro==='pendiente') return !f.pagado;
       if(fzFiltro==='devuelta') return !!f.devuelto;
       return true;
     });
+    if(texto) alumnos6e = alumnos6e.filter(s=>normApellido(nombreAlumno(s)).includes(texto));
     const chipFz = fzFiltro ? `<span class="filtro-chip">Mostrando: ${fzFiltro==='pagada'?'fianza pagada':fzFiltro==='pendiente'?'fianza sin pagar':'ya devueltas'}<button id="btnFzQuitarFiltro">✕</button></span>` : '';
-    box.innerHTML = chipFz + alumnos6e.map(s=>{
+    $('#fzFiltroChip') && ($('#fzFiltroChip').innerHTML = chipFz);
+    box.innerHTML = alumnos6e.map(s=>{
       const f = fzDatos[s.id]||{};
-      return `<div class="copyrow">
-        <span>${nombreAlumno(s)}</span>
-        <div class="row" style="gap:.5rem;">
-          <button class="btn-estado fz-pagado-btn ${f.pagado?'hecho':'pendiente'}" data-id="${s.id}">${f.pagado?'✓ Pagada':'Marcar pagada'}</button>
-          <button class="btn-estado fz-devuelto-btn ${f.devuelto?'hecho':'pendiente'}" data-id="${s.id}" ${!f.pagado?'disabled style="opacity:.4;"':''}>${f.devuelto?'✓ Devuelta':'Marcar devuelta'}</button>
-        </div>
-      </div>`;
-    }).join('') || (chipFz + '<p class="small">Nadie coincide con este filtro.</p>');
+      return `<tr>
+        <td>${nombreAlumno(s)}</td>
+        <td><button class="btn-estado fz-pagado-btn ${f.pagado?'hecho':'pendiente'}" data-id="${s.id}">${f.pagado?'✓ Pagada':'Marcar pagada'}</button></td>
+        <td><button class="btn-estado fz-devuelto-btn ${f.devuelto?'hecho':'pendiente'}" data-id="${s.id}" ${!f.pagado?'disabled style="opacity:.4;"':''}>${f.devuelto?'✓ Devuelta':'Marcar devuelta'}</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" class="small">Nadie coincide con este filtro.</td></tr>';
     const btnFzQuitar = $('#btnFzQuitarFiltro');
     if(btnFzQuitar) btnFzQuitar.addEventListener('click', ()=>{ fzFiltro=null; renderFianzaLibros(); });
     $$('.fz-pagado-btn').forEach(btn=>btn.addEventListener('click', async ()=>{
