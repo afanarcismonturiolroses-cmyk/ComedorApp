@@ -705,6 +705,15 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       </div>
     </details>
 
+    <details class="card" id="sec-soc-tutores">
+      <summary>Importar tutores</summary>
+      <div class="details-body">
+        <p class="small">Sube el listado de familias del cole (tutor, documento, dirección, teléfono e hijos con su curso). Se cruza con el alumnado y se agrupan hermanos automáticamente si hace falta.</p>
+        <input type="file" id="fileTutores">
+        <div id="tutoresPreview"></div>
+      </div>
+    </details>
+
     <details class="card" id="sec-soc-importar">
       <summary data-i18n="soc_importar_pagos"></summary>
       <div class="details-body">
@@ -1216,6 +1225,7 @@ const AREAS = {
       ['#sec-soc-resumen','Resumen'],
       ['#sec-soc-sugerencias','Crear familias'],
       ['#sec-soc-familias','Familias'],
+      ['#sec-soc-tutores','Importar tutores'],
       ['#sec-soc-importar','Importar pagos'],
       ['#sec-soc-fianza','Fianza de libros']
     ]
@@ -2501,6 +2511,94 @@ if(canAccess('socios')){
       return palabras.every(p=>nombreWords.some(w=>w===p || (p.length>2 && (w.startsWith(p)||p.startsWith(w)))));
     });
   }
+
+  /* -------- Importar tutores (listado oficial del cole: 1 tutor + hasta 4 hijos por fila) -------- */
+  function invertirNombre(txt){
+    // "Apellidos, Nombre" -> "Nombre Apellidos" (para buscar como el resto del alumnado)
+    const partes = String(txt||'').split(',');
+    return partes.length===2 ? `${partes[1].trim()} ${partes[0].trim()}` : String(txt||'').trim();
+  }
+  function matchConClase(texto, cursoCodigo){
+    const candidatos = matchAlumnoPorTexto(socDirectorio, texto);
+    if(candidatos.length<=1 || !cursoCodigo) return candidatos;
+    const conClase = candidatos.filter(s=>s.clase && s.clase.toLowerCase().startsWith(String(cursoCodigo).toLowerCase()));
+    return conClase.length ? conClase : candidatos;
+  }
+
+  $('#fileTutores').addEventListener('change', async (e)=>{
+    const file=e.target.files[0]; if(!file) return;
+    const box=$('#tutoresPreview'); box.innerHTML='<p class="small">Leyendo…</p>';
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array', cellDates:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    const header = rows.find(r=>r.some(c=>String(c).toLowerCase().includes('tutor')));
+    if(!header){ box.innerHTML = '<p class="small" style="color:var(--rose-text);">No reconozco este formato (esperaba columnas "Tutor/a 1...", "FILL...").</p>'; return; }
+    const datos = rows.slice(rows.indexOf(header)+1).filter(r=>r[0] && String(r[0]).trim());
+
+    const filasProcesadas = datos.map(r=>{
+      const tutor = { nombre: invertirNombre(r[0]), documento: String(r[1]||'').trim(), direccion: String(r[2]||'').trim(), telefono: String(r[3]||'').trim() };
+      const hijos = [];
+      for(let i=0;i<4;i++){
+        const nombreHijo = r[4+i];
+        if(!nombreHijo || !String(nombreHijo).trim()) continue;
+        const curso = r[8+i];
+        const candidatos = matchConClase(invertirNombre(nombreHijo), curso);
+        hijos.push({ textoOriginal: invertirNombre(nombreHijo), curso, candidatos });
+      }
+      return { tutor, hijos };
+    });
+
+    // Determinar familia destino por fila: si algún hijo ya tiene familia, se usa esa; si no, se crea una nueva con todos los hijos emparejados sin ambigüedad.
+    let nuevasFamilias=0, familiasActualizadas=0, hijosSinMatch=0, hijosAmbiguos=0;
+    const resumenFilas = filasProcesadas.map(fila=>{
+      const matcheados = fila.hijos.filter(h=>h.candidatos.length===1);
+      const ambiguos = fila.hijos.filter(h=>h.candidatos.length>1);
+      const sinMatch = fila.hijos.filter(h=>h.candidatos.length===0);
+      hijosAmbiguos += ambiguos.length; hijosSinMatch += sinMatch.length;
+      const idsMatcheados = matcheados.map(h=>h.candidatos[0].id);
+      const familiaExistente = Object.entries(socFamilias).find(([id,f])=>idsMatcheados.some(aid=>f.alumnos && f.alumnos[aid]));
+      return { ...fila, matcheados, ambiguos, sinMatch, familiaExistenteId: familiaExistente?familiaExistente[0]:null };
+    });
+    resumenFilas.forEach(f=>{ if(f.matcheados.length){ if(f.familiaExistenteId) familiasActualizadas++; else nuevasFamilias++; } });
+
+    box.innerHTML = `
+      <p class="small">${nuevasFamilias} familia(s) nuevas se crearán, ${familiasActualizadas} familia(s) existentes recibirán el contacto del tutor.</p>
+      ${hijosAmbiguos?`<p class="small" style="color:var(--amber-text);">${hijosAmbiguos} hijo(s) con nombre ambiguo, revisa a mano.</p>`:''}
+      ${hijosSinMatch?`<p class="small" style="color:var(--rose-text);">${hijosSinMatch} hijo(s) no reconocidos en el alumnado.</p>`:''}
+      <details style="margin-top:.5rem;"><summary class="small">Ver detalle fila a fila</summary>
+        ${resumenFilas.map(f=>`<div class="small" style="padding:.3rem 0;border-bottom:1px solid var(--line);">
+          <strong>${f.tutor.nombre}</strong> — ${f.matcheados.map(h=>h.candidatos[0].nombre+' '+h.candidatos[0].apellidos).join(', ')||'—'}
+          ${f.ambiguos.length?' · ambiguos: '+f.ambiguos.map(h=>h.textoOriginal).join(', '):''}
+          ${f.sinMatch.length?' · sin match: '+f.sinMatch.map(h=>h.textoOriginal).join(', '):''}
+          ${f.familiaExistenteId?' · familia ya existente':f.matcheados.length?' · familia nueva':' · sin hijos reconocidos, se omite'}
+        </div>`).join('')}
+      </details>
+      ${(nuevasFamilias+familiasActualizadas)?`<button id="btnConfirmarTutores">Guardar estos tutores</button><span id="tutoresStatus" class="small"></span>`:''}`;
+
+    const btn = $('#btnConfirmarTutores');
+    if(btn) btn.addEventListener('click', async ()=>{
+      const st = $('#tutoresStatus'); st.textContent='Guardando…';
+      try{
+        const payload = {};
+        resumenFilas.forEach(f=>{
+          if(!f.matcheados.length) return;
+          if(f.familiaExistenteId){
+            const fam = socFamilias[f.familiaExistenteId];
+            const yaEsta = (fam.tutores||[]).some(t=>t.nombre===f.tutor.nombre);
+            if(!yaEsta) payload['socios/familias/'+f.familiaExistenteId+'/tutores'] = [...(fam.tutores||[]), f.tutor];
+          } else {
+            const famId = 'fam_'+f.matcheados[0].candidatos[0].id;
+            const alumnosObj = {}; f.matcheados.forEach(h=>{ alumnosObj[h.candidatos[0].id]=true; });
+            const apellidoFamilia = f.tutor.nombre.split(' ').slice(1).join(' ') || f.tutor.nombre;
+            payload['socios/familias/'+famId] = { nombre: apellidoFamilia, alumnos: alumnosObj, pagado:false, tutores:[f.tutor] };
+          }
+        });
+        await update(ref(db), payload);
+        st.textContent = 'Hecho ✓'; $('#fileTutores').value='';
+      }catch(err){ st.textContent='ERROR: '+err.message; alert('No se pudo guardar: '+err.message); }
+    });
+  });
 
   $('#fileCuotaPagada').addEventListener('change', async (e)=>{
     const file=e.target.files[0]; if(!file) return;
