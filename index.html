@@ -700,7 +700,10 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
     <details class="card" id="sec-soc-familias" open>
       <summary><span data-i18n="soc_familias"></span> <span class="count" id="socFamCount"></span></summary>
       <div class="details-body">
-        <div class="row"><input type="text" id="socBuscar" data-i18n-placeholder="soc_buscar"></div>
+        <div class="row">
+          <input type="text" id="socBuscar" data-i18n-placeholder="soc_buscar" style="flex:2;">
+          <select id="socFiltroClase" style="flex:1;"><option value="">Todas las clases</option></select>
+        </div>
         <div id="socFamFiltroChip"></div>
         <div style="overflow-x:auto;margin-top:.6rem;">
           <table id="socFamTable"><thead><tr>
@@ -2401,9 +2404,16 @@ if(canAccess('socios')){
 
   function renderSociosFamilias(filtro){
     const f = normApellido(filtro||'');
+    const clase = $('#socFiltroClase')?.value || '';
     const box = $('#socFamiliasList');
     let entries = Object.entries(socFamilias).sort((a,b)=>(a[1].nombre||'').localeCompare(b[1].nombre||''));
     if(socFiltroPago!==null) entries = entries.filter(([id,fam])=>!!fam.pagado===socFiltroPago);
+    if(clase) entries = entries.filter(([id,fam])=>{
+      return Object.keys(fam.alumnos||{}).some(aid=>{
+        const s = socBuscarAlumnoPorId(aid);
+        return s && s.clase===clase;
+      });
+    });
     const filtradas = !f ? entries : entries.filter(([id,fam])=>{
       if(normApellido(fam.nombre).includes(f)) return true;
       return Object.keys(fam.alumnos||{}).some(aid=>{
@@ -2681,6 +2691,10 @@ if(canAccess('socios')){
 
   function renderSociosAll(){ renderSociosStats(); renderSociosFamilias($('#socBuscar')?.value); renderFianzaLibros(); }
   $('#socBuscar').addEventListener('input', ()=>renderSociosFamilias($('#socBuscar').value));
+  if($('#socFiltroClase').options.length<=1){
+    classesList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; $('#socFiltroClase').appendChild(o); });
+  }
+  $('#socFiltroClase').addEventListener('change', ()=>renderSociosFamilias($('#socBuscar').value));
 
   /* -------- Fianza de libros (30€, solo 6è Primària, se devuelve el curso siguiente) -------- */
   let fzDatos = {};
