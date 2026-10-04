@@ -701,7 +701,12 @@ details.card>.details-body{padding:0 1.1rem 1.1rem;}
       <summary><span data-i18n="soc_familias"></span> <span class="count" id="socFamCount"></span></summary>
       <div class="details-body">
         <div class="row"><input type="text" id="socBuscar" data-i18n-placeholder="soc_buscar"></div>
-        <div id="socFamiliasList" style="margin-top:.6rem;"></div>
+        <div id="socFamFiltroChip"></div>
+        <div style="overflow-x:auto;margin-top:.6rem;">
+          <table id="socFamTable"><thead><tr>
+            <th>Familia</th><th>Hijos (clase)</th><th>Tutores</th><th>Pago</th><th></th>
+          </tr></thead><tbody id="socFamiliasList"></tbody></table>
+        </div>
       </div>
     </details>
 
@@ -2407,31 +2412,32 @@ if(canAccess('socios')){
       });
     });
     $('#socFamCount').textContent = entries.length ? `${entries.length}` : '';
-    const chipHtml = socFiltroPago!==null
+    $('#socFamFiltroChip').innerHTML = socFiltroPago!==null
       ? `<span class="filtro-chip">Mostrando: ${socFiltroPago?'familias que han pagado':'familias sin pagar'}<button id="btnSocQuitarFiltro">✕</button></span>`
       : '';
     box.innerHTML = filtradas.map(([id,fam])=>{
       const hijos = Object.keys(fam.alumnos||{}).map(aid=>{
         const s = socBuscarAlumnoPorId(aid);
-        return s ? `<span class="tag" style="background:var(--paper);color:var(--ink);">${nombreAlumno(s)} · ${s.clase}</span>` : `<span class="tag" style="background:var(--rose-bg);color:var(--rose-text);">${aid} (no encontrado)</span>`;
-      }).join(' ');
-      const tutores = (fam.tutores||[]).map(t=>`<div class="small">👤 ${t.nombre||''}${t.parentesco?' ('+t.parentesco+')':''}${t.telefono?' · '+t.telefono:''}${t.email?' · '+t.email:''}</div>`).join('');
-      return `<div class="copyrow" style="align-items:flex-start;flex-wrap:wrap;">
-        <div style="flex:1;min-width:200px;">
-          <strong>${fam.nombre||'(sin nombre)'}</strong><br>
-          <div style="margin-top:.3rem;">${hijos || '<span class="small">Sin hijos vinculados</span>'}</div>
-          <div style="margin-top:.4rem;">${tutores || '<span class="small" style="color:var(--muted);">Sin datos de tutores todavía</span>'}</div>
-        </div>
-        <div class="flexcol" style="align-items:flex-end;gap:.3rem;">
+        return s ? `${nombreAlumno(s)} <span class="small">(${s.clase})</span>` : `<span style="color:var(--rose-text);">${aid} (no encontrado)</span>`;
+      }).join('<br>');
+      const tutores = (fam.tutores||[]).map(t=>`${t.nombre||''}${t.parentesco?' ('+t.parentesco+')':''}${t.telefono?' · '+t.telefono:''}`).join('<br>');
+      return `<tr>
+        <td><strong>${fam.nombre||'(sin nombre)'}</strong></td>
+        <td class="small">${hijos || '<span style="color:var(--muted);">Sin hijos vinculados</span>'}</td>
+        <td class="small">${tutores || '<span style="color:var(--muted);">Sin datos todavía</span>'}</td>
+        <td>
           <label class="toggle"><input type="checkbox" class="soc-pagado" data-id="${id}" ${fam.pagado?'checked':''}><span class="slider"></span></label>
-          <span class="pill ${fam.pagado?'ok':'pend'}">${fam.pagado ? 'Pagado'+(fam.fechaPago?' · '+new Date(fam.fechaPago).toLocaleDateString('es-ES'):'') : 'Sin pagar'}</span>
-          <button class="secondary soc-editar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Editar hijos</button>
-          <button class="secondary soc-tutores" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Editar tutores</button>
-          <button class="danger soc-borrar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;">Borrar familia</button>
-        </div>
-      </div>`;
-    }).join('') || '<p class="small">No hay familias que coincidan.</p>';
-    box.innerHTML = chipHtml + box.innerHTML;
+          <span class="pill ${fam.pagado?'ok':'pend'}" style="display:block;margin-top:.3rem;white-space:nowrap;">${fam.pagado ? 'Pagado'+(fam.fechaPago?' · '+new Date(fam.fechaPago).toLocaleDateString('es-ES'):'') : 'Sin pagar'}</span>
+        </td>
+        <td>
+          <div class="flexcol" style="gap:.3rem;">
+            <button class="secondary soc-editar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;white-space:nowrap;">Editar hijos</button>
+            <button class="secondary soc-tutores" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;white-space:nowrap;">Editar tutores</button>
+            <button class="danger soc-borrar" data-id="${id}" style="padding:.3em .7em;font-size:.8rem;white-space:nowrap;">Borrar</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="small">No hay familias que coincidan.</td></tr>';
     const btnQuitar = $('#btnSocQuitarFiltro');
     if(btnQuitar) btnQuitar.addEventListener('click', ()=>{ socFiltroPago=null; renderSociosFamilias($('#socBuscar')?.value); });
 
