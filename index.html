@@ -986,7 +986,10 @@ const CLASSES_DEFAULT = ["4t Primària", "3r Primària", "2n Primària", "1r Pri
 // Padrón oficial 2026-2027 generado desde Matriculados_2026-2027.xlsx.
 let OFFICIAL_STUDENTS = []; // se carga desde un archivo JSON privado (no está en GitHub)
 
-const todayStr = () => new Date().toISOString().slice(0,10);
+const todayStr = () => {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+};
 
 /* ---------------- Incidencias (compartida por todos los módulos) ----------------
    incidencias/<fecha>/<id>: { modulo, alumnoId, alumnoNombre, clase, nota, creadoEn }
